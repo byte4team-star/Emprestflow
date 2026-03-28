@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Edge Function - EmpréstFlow</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #115740 0%, #1a7d5b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #115740;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+
+    .test-title {
+      font-weight: 600;
+      color: #115740;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    button {
+      background: #115740;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #0d3f2f;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(17, 87, 64, 0.3);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      display: none;
+    }
+
+    .result.show {
+      display: block;
+    }
+
+    .result.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .result.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .result.loading {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .status-badge.online {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.offline {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-badge.checking {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .info-box {
+      background: #e7f3ff;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #1976D2;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .info-box p {
+      color: #555;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+    }
+
+    .url-display {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin: 10px 0;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Teste de Edge Function</h1>
+    <p class="subtitle">Sistema EmpréstFlow - Diagnóstico de Conectividade</p>
+
+    <div class="info-box">
+      <h3>ℹ️ O que este teste faz?</h3>
+      <p>
+        Este script testa se a Edge Function <strong>make-server-bd42bc02</strong> está corretamente 
+        deployada e acessível no Supabase. Use este teste após fazer o deploy para confirmar que tudo está funcionando.
+      </p>
+    </div>
+
+    <!-- Teste 1: Health Check -->
+    <div class="test-section">
+      <div class="test-title">
+        1. Health Check Básico
+        <span id="status1" class="status-badge checking">Aguardando</span>
+      </div>
+      <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+        Verifica se a Edge Function está online e respondendo.
+      </p>
+      <div class="url-display">
+        GET /make-server-bd42bc02/health
+      </div>
+      <button onclick="testHealth()" id="btn1">Testar Agora</button>
+      <div id="result1" class="result"></div>
+    </div>
+
+    <!-- Teste 2: Root Endpoint -->
+    <div class="test-section">
+      <div class="test-title">
+        2. Endpoint Raiz
+        <span id="status2" class="status-badge checking">Aguardando</span>
+      </div>
+      <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+        Testa o endpoint principal da API.
+      </p>
+      <div class="url-display">
+        GET /make-server-bd42bc02
+      </div>
+      <button onclick="testRoot()" id="btn2">Testar Agora</button>
+      <div id="result2" class="result"></div>
+    </div>
+
+    <!-- Teste 3: Reminders Endpoint -->
+    <div class="test-section">
+      <div class="test-title">
+        3. Endpoint de Lembretes
+        <span id="status3" class="status-badge checking">Aguardando</span>
+      </div>
+      <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+        Testa o endpoint específico que estava dando erro 404.
+      </p>
+      <div class="url-display">
+        GET /make-server-bd42bc02/reminders/due-installments
+      </div>
+      <button onclick="testReminders()" id="btn3">Testar Agora (requer login)</button>
+      <div id="result3" class="result"></div>
+    </div>
+
+    <!-- Botão para testar todos -->
+    <div style="text-align: center; margin-top: 30px;">
+      <button onclick="testAll()" style="background: #d4af37; padding: 16px 32px; font-size: 16px;">
+        ▶️ Executar Todos os Testes
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const PROJECT_ID = 'nbelraenzoprsskjnvpc';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZWxyYWVuem9wcnNza2pudnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MDczNzcsImV4cCI6MjA4NzM4MzM3N30.xVpRFnJHnNzRZ_CMeH02rVey895P0ST78E1hi8G7HNM';
+    const BASE_URL = `https://${PROJECT_ID}.supabase.co/functions/v1`;
+
+    function showResult(id, type, message) {
+      const result = document.getElementById(`result${id}`);
+      const status = document.getElementById(`status${id}`);
+      result.className = `result ${type} show`;
+      result.innerHTML = `<pre>${message}</pre>`;
+      
+      if (type === 'success') {
+        status.className = 'status-badge online';
+        status.textContent = 'Online ✅';
+      } else if (type === 'error') {
+        status.className = 'status-badge offline';
+        status.textContent = 'Offline ❌';
+      } else {
+        status.className = 'status-badge checking';
+        status.textContent = 'Testando...';
+      }
+    }
+
+    async function testHealth() {
+      const btn = document.getElementById('btn1');
+      btn.disabled = true;
+      showResult(1, 'loading', '🔄 Testando...');
+
+      try {
+        const response = await fetch(`${BASE_URL}/make-server-bd42bc02/health`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showResult(1, 'success', 
+            `✅ SUCESSO!\n\n` +
+            `Status: ${response.status} ${response.statusText}\n` +
+            `Resposta:\n${JSON.stringify(data, null, 2)}`
+          );
+        } else {
+          const errorText = await response.text();
+          showResult(1, 'error', 
+            `❌ ERRO ${response.status}\n\n` +
+            `${response.statusText}\n\n` +
+            `Resposta: ${errorText || 'Nenhuma resposta'}`
+          );
+        }
+      } catch (error) {
+        showResult(1, 'error', 
+          `❌ ERRO DE CONEXÃO\n\n` +
+          `${error.message}\n\n` +
+          `Possíveis causas:\n` +
+          `- Edge Function não foi deployada\n` +
+          `- Problema de rede/CORS\n` +
+          `- URL incorreta`
+        );
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function testRoot() {
+      const btn = document.getElementById('btn2');
+      btn.disabled = true;
+      showResult(2, 'loading', '🔄 Testando...');
+
+      try {
+        const response = await fetch(`${BASE_URL}/make-server-bd42bc02`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showResult(2, 'success', 
+            `✅ SUCESSO!\n\n` +
+            `Status: ${response.status} ${response.statusText}\n` +
+            `Resposta:\n${JSON.stringify(data, null, 2)}`
+          );
+        } else {
+          const errorText = await response.text();
+          showResult(2, 'error', 
+            `❌ ERRO ${response.status}\n\n` +
+            `${response.statusText}\n\n` +
+            `Resposta: ${errorText || 'Nenhuma resposta'}`
+          );
+        }
+      } catch (error) {
+        showResult(2, 'error', 
+          `❌ ERRO DE CONEXÃO\n\n` +
+          `${error.message}`
+        );
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function testReminders() {
+      const btn = document.getElementById('btn3');
+      btn.disabled = true;
+      showResult(3, 'loading', '🔄 Testando...');
+
+      try {
+        const response = await fetch(`${BASE_URL}/make-server-bd42bc02/reminders/due-installments`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showResult(3, 'success', 
+            `✅ SUCESSO!\n\n` +
+            `Status: ${response.status} ${response.statusText}\n` +
+            `Lembretes encontrados: ${data.reminders?.length || 0}\n\n` +
+            `Resposta completa:\n${JSON.stringify(data, null, 2)}`
+          );
+        } else if (response.status === 401) {
+          showResult(3, 'error', 
+            `⚠️ ERRO 401 - NÃO AUTORIZADO\n\n` +
+            `Este endpoint requer autenticação.\n` +
+            `Teste no sistema após fazer login.`
+          );
+        } else {
+          const errorText = await response.text();
+          showResult(3, 'error', 
+            `❌ ERRO ${response.status}\n\n` +
+            `${response.statusText}\n\n` +
+            `Resposta: ${errorText || 'Nenhuma resposta'}`
+          );
+        }
+      } catch (error) {
+        showResult(3, 'error', 
+          `❌ ERRO DE CONEXÃO\n\n` +
+          `${error.message}`
+        );
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function testAll() {
+      await testHealth();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testRoot();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testReminders();
+    }
+
+    // Auto-run test 1 on load
+    window.addEventListener('load', () => {
+      setTimeout(testHealth, 500);
+    });
+  </script>
+</body>
+</html>

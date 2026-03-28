@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════════════════════════════════
+  CORREÇÃO CRÍTICA: DATA DE VENCIMENTO GRAVANDO UM DIA ANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+📅 PROBLEMA
+-----------
+Ao criar ou editar contratos, a data de vencimento era gravada com UM DIA ANTERIOR
+ao selecionado pelo usuário.
+
+Exemplo: Usuário escolhe 15/04/2026 → Sistema grava 14/04/2026 ❌
+
+
+🔍 CAUSA
+--------
+O código usava new Date(year, month, day) que considera o fuso horário LOCAL do
+servidor. Com servidores em UTC e conversões de timezone, a data mudava.
+
+
+✅ SOLUÇÃO
+----------
+Substituído por Date.UTC(year, month, day) para garantir processamento em UTC
+sem conversões indesejadas.
+
+
+📝 ARQUIVOS CORRIGIDOS
+----------------------
+/supabase/functions/server/index.tsx
+
+  ✓ Linha ~1151 - Rota POST /contracts (criar contrato)
+  ✓ Linha ~1258 - Rota PUT /contracts/:id (editar contrato)  
+  ✓ Linha ~2344 - Rota POST /seed (dados de teste)
+
+
+🚀 DEPLOY NECESSÁRIO
+--------------------
+A correção está implementada no código mas NÃO está ativa no servidor.
+
+É necessário fazer DEPLOY MANUAL da Edge Function "server" via:
+  • Supabase Dashboard, ou
+  • Supabase CLI: supabase functions deploy server
+
+Sem o deploy, o problema continuará ocorrendo!
+
+
+📊 VERSÃO
+---------
+Antes: 2.1.1
+Depois: 2.2.0 (Fixed timezone issue)
+Data: 28/03/2026
+
+
+⚠️ IMPORTANTE
+-------------
+• Contratos ANTIGOS mantêm as datas incorretas (criados antes da correção)
+• Contratos NOVOS terão as datas corretas (criados após o deploy)
+• Para corrigir contratos antigos: editar manualmente ou recriar
+
+
+✅ TESTE RÁPIDO
+---------------
+Após o deploy:
+1. Criar novo contrato com vencimento em 15/04/2026
+2. Verificar se a primeira parcela aparece como 15/04/2026 (não 14/04)
+3. Se aparecer a data correta, a correção está funcionando!
+
+
+📧 SUPORTE
+----------
+Problemas após deploy? Verifique:
+  • Logs da função: supabase functions logs server
+  • Versão ativa: deve mostrar "2.2.0"
+  • Teste com contrato completamente novo
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Status: ✅ CORREÇÃO IMPLEMENTADA - AGUARDANDO DEPLOY MANUAL
+═══════════════════════════════════════════════════════════════════════════════
