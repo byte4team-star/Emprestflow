@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Correção Timezone - Data de Vencimento</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #115740 0%, #0d4230 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .logo {
+      color: #115740;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .logo span {
+      color: #d4af37;
+    }
+    
+    h1 {
+      color: #115740;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .test-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .test-title {
+      color: #115740;
+      font-weight: bold;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .test-result {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      border-left: 4px solid #ccc;
+    }
+    
+    .test-result.success {
+      border-left-color: #28a745;
+      background: #f0fdf4;
+    }
+    
+    .test-result.error {
+      border-left-color: #dc3545;
+      background: #fef2f2;
+    }
+    
+    .result-label {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    
+    .result-value {
+      font-family: 'Courier New', monospace;
+      color: #115740;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    
+    .status-badge.success {
+      background: #28a745;
+      color: white;
+    }
+    
+    .status-badge.error {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .explanation {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .explanation strong {
+      color: #856404;
+    }
+    
+    .code-block {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+    
+    .code-block .comment {
+      color: #6a9955;
+    }
+    
+    .code-block .wrong {
+      color: #f48771;
+    }
+    
+    .code-block .correct {
+      color: #a5d6a7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">ALEMÃO.<span>CREFISA</span></div>
+      <h1>🔧 Teste de Correção: Timezone</h1>
+      <p class="subtitle">Verificando problema de data de vencimento</p>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">
+        📅 Teste 1: Problema Original (Timezone Local)
+      </div>
+      <div id="test1" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">
+        ✅ Teste 2: Solução Implementada (UTC)
+      </div>
+      <div id="test2" class="test-result success"></div>
+    </div>
+    
+    <div class="explanation">
+      <strong>🔍 O que causava o problema?</strong><br><br>
+      
+      O construtor <code>new Date(year, month, day)</code> usa o <strong>fuso horário local do servidor</strong>. 
+      Quando o servidor está em UTC e há conversão de datas, pode ocorrer uma diferença de um dia.<br><br>
+      
+      <strong>✅ Como foi corrigido?</strong><br>
+      Usando <code>Date.UTC(year, month, day)</code> para garantir que todas as datas sejam 
+      processadas em UTC, evitando conversões indesejadas.
+    </div>
+    
+    <div class="code-block">
+<span class="comment">// ❌ ANTES (Problema)</span>
+<span class="wrong">const dueDate = new Date(year, month + i, day);</span>
+<span class="wrong">const formatted = `${dueDate.getFullYear()}-${dueDate.getMonth() + 1}...`;</span>
+
+<span class="comment">// ✅ DEPOIS (Correto)</span>
+<span class="correct">const dueDate = new Date(Date.UTC(year, month + i, day));</span>
+<span class="correct">const formatted = `${dueDate.getUTCFullYear()}-${dueDate.getUTCMonth() + 1}...`;</span>
+    </div>
+  </div>
+  
+  <script>
+    // Simular o problema original
+    function testProblemOriginal() {
+      const firstDueDate = "2026-04-15";
+      const parts = firstDueDate.split('-');
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2]);
+      
+      // PROBLEMA: usando timezone local
+      const dueDate = new Date(year, month, day);
+      
+      // Formatando usando métodos locais
+      const formattedDueDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+      
+      return {
+        input: firstDueDate,
+        output: formattedDueDate,
+        dateObject: dueDate.toISOString(),
+        isCorrect: formattedDueDate === firstDueDate
+      };
+    }
+    
+    // Simular a solução correta
+    function testSolucaoCorreta() {
+      const firstDueDate = "2026-04-15";
+      const parts = firstDueDate.split('-');
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2]);
+      
+      // SOLUÇÃO: usando UTC
+      const dueDate = new Date(Date.UTC(year, month, day));
+      
+      // Formatando usando métodos UTC
+      const formattedDueDate = `${dueDate.getUTCFullYear()}-${String(dueDate.getUTCMonth() + 1).padStart(2, '0')}-${String(dueDate.getUTCDate()).padStart(2, '0')}`;
+      
+      return {
+        input: firstDueDate,
+        output: formattedDueDate,
+        dateObject: dueDate.toISOString(),
+        isCorrect: formattedDueDate === firstDueDate
+      };
+    }
+    
+    // Executar testes
+    const result1 = testProblemOriginal();
+    const result2 = testSolucaoCorreta();
+    
+    // Mostrar resultado do Teste 1
+    document.getElementById('test1').innerHTML = `
+      <div class="result-label">Data de entrada:</div>
+      <div class="result-value">${result1.input}</div>
+      
+      <div class="result-label" style="margin-top: 15px;">Data gravada no banco:</div>
+      <div class="result-value" style="color: ${result1.isCorrect ? '#28a745' : '#dc3545'};">${result1.output}</div>
+      
+      <div class="result-label" style="margin-top: 15px;">ISO String (Servidor):</div>
+      <div class="result-value" style="font-size: 12px; color: #666;">${result1.dateObject}</div>
+      
+      <div class="status-badge ${result1.isCorrect ? 'success' : 'error'}">
+        ${result1.isCorrect ? '✅ Data Correta' : '❌ Data Incorreta (um dia antes!)'}
+      </div>
+    `;
+    
+    if (!result1.isCorrect) {
+      document.getElementById('test1').classList.add('error');
+    }
+    
+    // Mostrar resultado do Teste 2
+    document.getElementById('test2').innerHTML = `
+      <div class="result-label">Data de entrada:</div>
+      <div class="result-value">${result2.input}</div>
+      
+      <div class="result-label" style="margin-top: 15px;">Data gravada no banco:</div>
+      <div class="result-value" style="color: ${result2.isCorrect ? '#28a745' : '#dc3545'};">${result2.output}</div>
+      
+      <div class="result-label" style="margin-top: 15px;">ISO String (Servidor):</div>
+      <div class="result-value" style="font-size: 12px; color: #666;">${result2.dateObject}</div>
+      
+      <div class="status-badge ${result2.isCorrect ? 'success' : 'error'}">
+        ${result2.isCorrect ? '✅ Data Correta!' : '❌ Data Incorreta'}
+      </div>
+    `;
+  </script>
+</body>
+</html>

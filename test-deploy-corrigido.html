@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Deploy Edge Function - v2.2.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #115740 0%, #1a7a5c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #115740;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .test-section h2 {
+            color: #115740;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .btn {
+            background: #115740;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #1a7a5c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #d4af37;
+        }
+        
+        .btn-secondary:hover {
+            background: #c19b2e;
+        }
+        
+        .result {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-ok {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Teste Edge Function Deploy - v2.2.0</h1>
+            <p>Teste das correções de timezone e cálculo de parcelas</p>
+            <p><strong>Edge Function:</strong> make-server-bd42bc02</p>
+            <p><strong>Status:</strong> <span id="deployStatus" class="status-badge status-pending">Verificando...</span></p>
+        </div>
+
+        <!-- Teste 1: Health Check -->
+        <div class="test-section">
+            <h2>1️⃣ Health Check - Verificar Versão</h2>
+            <p>Verifica se a versão 2.2.0 está ativa no Supabase</p>
+            <button class="btn" onclick="testHealthCheck()">Executar Health Check</button>
+            <div id="healthResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Teste 2: Login -->
+        <div class="test-section">
+            <h2>2️⃣ Login - Obter Token de Autenticação</h2>
+            <div class="grid">
+                <div>
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" value="admin@empresa.com">
+                </div>
+                <div>
+                    <label>Senha:</label>
+                    <input type="password" id="loginPassword" value="Admin@123456">
+                </div>
+            </div>
+            <button class="btn" onclick="testLogin()">Fazer Login</button>
+            <button class="btn btn-secondary" onclick="copyToken()">Copiar Token</button>
+            <div id="loginResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Teste 3: Criar Contrato -->
+        <div class="test-section">
+            <h2>3️⃣ Criar Contrato - Testar Correção de Timezone</h2>
+            <div class="grid">
+                <div>
+                    <label>Valor do Empréstimo:</label>
+                    <input type="number" id="loanAmount" value="1000">
+                </div>
+                <div>
+                    <label>Número de Parcelas:</label>
+                    <input type="number" id="installmentsCount" value="4">
+                </div>
+                <div>
+                    <label>Taxa de Juros Mensal (%):</label>
+                    <input type="number" id="interestRate" value="10">
+                </div>
+                <div>
+                    <label>Data do Primeiro Vencimento:</label>
+                    <input type="date" id="firstDueDate" value="2026-04-15">
+                </div>
+            </div>
+            <button class="btn" onclick="testCreateContract()">Criar Contrato de Teste</button>
+            <div id="contractResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Teste 4: Seed Data -->
+        <div class="test-section">
+            <h2>4️⃣ Seed Data - Criar Dados de Exemplo</h2>
+            <p>⚠️ Atenção: Isso irá limpar todos os dados existentes e criar novos dados de exemplo!</p>
+            <button class="btn" onclick="testSeedData()">Criar Seed Data</button>
+            <div id="seedResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Resumo dos Testes -->
+        <div class="test-section">
+            <h2>📊 Resumo dos Testes</h2>
+            <div id="summary" class="result info">
+                <strong>Status dos Testes:</strong><br><br>
+                ✅ Health Check: <span id="summaryHealth">Não executado</span><br>
+                ✅ Login: <span id="summaryLogin">Não executado</span><br>
+                ✅ Criar Contrato: <span id="summaryContract">Não executado</span><br>
+                ✅ Seed Data: <span id="summarySeed">Não executado</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://nbelraenszprsskjnvpc.supabase.co';
+        const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/make-server-bd42bc02`;
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZWxyYWVuc3pwcnNza2pudnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5OTE2MzksImV4cCI6MjA0ODU2NzYzOX0.vVe7rPeVmS23PZRRFXIIhZTKjNcvOSZZx2x7qqVvLY4';
+        
+        let authToken = null;
+        let currentUser = null;
+
+        // Verificar status do deploy ao carregar
+        window.onload = async () => {
+            await testHealthCheck(true);
+        };
+
+        // Teste 1: Health Check
+        async function testHealthCheck(silent = false) {
+            if (!silent) showLoading('healthResult');
+            
+            try {
+                const response = await fetch(`${FUNCTION_URL}/health`);
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('healthResult');
+                resultDiv.style.display = 'block';
+                
+                if (response.ok && data.version === '2.2.0') {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        ✅ <strong>SUCESSO!</strong><br><br>
+                        <strong>Status:</strong> ${data.status}<br>
+                        <strong>Versão:</strong> ${data.version}<br>
+                        <strong>Timestamp:</strong> ${data.timestamp}<br><br>
+                        🎉 <strong>Deploy correto! Versão 2.2.0 ativa!</strong>
+                    `;
+                    
+                    document.getElementById('deployStatus').className = 'status-badge status-ok';
+                    document.getElementById('deployStatus').textContent = `v${data.version} ✅`;
+                    document.getElementById('summaryHealth').textContent = '✅ Versão 2.2.0 ativa';
+                } else {
+                    throw new Error(`Versão incorreta: ${data.version}`);
+                }
+            } catch (error) {
+                const resultDiv = document.getElementById('healthResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    ❌ <strong>ERRO!</strong><br><br>
+                    ${error.message}<br><br>
+                    <strong>Ação necessária:</strong><br>
+                    1. Verifique se fez deploy dos arquivos corretos<br>
+                    2. Consulte: INSTRUCAO_DEPLOY_EDGE_FUNCTION.md
+                `;
+                
+                document.getElementById('deployStatus').className = 'status-badge status-error';
+                document.getElementById('deployStatus').textContent = 'Deploy pendente ❌';
+                document.getElementById('summaryHealth').textContent = '❌ Erro ou versão incorreta';
+            }
+        }
+
+        // Teste 2: Login
+        async function testLogin() {
+            showLoading('loginResult');
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': ANON_KEY
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error_description || data.message || 'Erro ao fazer login');
+                }
+                
+                authToken = data.access_token;
+                currentUser = data.user;
+                
+                const resultDiv = document.getElementById('loginResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    ✅ <strong>LOGIN REALIZADO COM SUCESSO!</strong><br><br>
+                    <strong>Email:</strong> ${currentUser.email}<br>
+                    <strong>ID:</strong> ${currentUser.id}<br>
+                    <strong>Token:</strong> ${authToken.substring(0, 50)}...<br><br>
+                    🔑 Token salvo automaticamente para os próximos testes
+                `;
+                
+                document.getElementById('summaryLogin').textContent = `✅ ${email}`;
+            } catch (error) {
+                showError('loginResult', error.message);
+                document.getElementById('summaryLogin').textContent = '❌ Erro no login';
+            }
+        }
+
+        // Copiar token
+        function copyToken() {
+            if (!authToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+            
+            navigator.clipboard.writeText(authToken);
+            alert('Token copiado para a área de transferência!');
+        }
+
+        // Teste 3: Criar Contrato
+        async function testCreateContract() {
+            if (!authToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+            
+            showLoading('contractResult');
+            
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const installmentsCount = parseInt(document.getElementById('installmentsCount').value);
+            const monthlyInterestRate = parseFloat(document.getElementById('interestRate').value);
+            const firstDueDate = document.getElementById('firstDueDate').value;
+            
+            // Primeiro, criar um cliente de teste
+            try {
+                const clientId = 'client_test_' + Date.now();
+                const clientData = {
+                    id: clientId,
+                    fullName: 'Cliente Teste Deploy',
+                    cpfCnpj: '123.456.789-00',
+                    phone: '(11) 98765-4321',
+                    whatsapp: '(11) 98765-4321',
+                    email: 'teste@email.com',
+                    address: 'Rua Teste, 123',
+                    status: 'active'
+                };
+                
+                // Criar contrato
+                const contractResponse = await fetch(`${FUNCTION_URL}/contracts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-User-Token': authToken
+                    },
+                    body: JSON.stringify({
+                        clientId: clientId,
+                        client: clientData,
+                        loanAmount: loanAmount,
+                        installmentsCount: installmentsCount,
+                        monthlyInterestRate: monthlyInterestRate,
+                        firstDueDate: firstDueDate
+                    })
+                });
+                
+                const contractData = await contractResponse.json();
+                
+                if (!contractResponse.ok) {
+                    throw new Error(contractData.error || 'Erro ao criar contrato');
+                }
+                
+                // Analisar as datas de vencimento
+                const installments = contractData.contract.installmentsList;
+                let allDatesCorrect = true;
+                let dateAnalysis = '';
+                
+                installments.forEach((inst, idx) => {
+                    const dueDate = new Date(inst.dueDate);
+                    const expectedDay = parseInt(firstDueDate.split('-')[2]);
+                    const actualDay = dueDate.getUTCDate();
+                    
+                    const isCorrect = actualDay === expectedDay;
+                    if (!isCorrect) allDatesCorrect = false;
+                    
+                    dateAnalysis += `
+                        Parcela ${inst.number}: 
+                        ${dueDate.toISOString().split('T')[0]} 
+                        (dia ${actualDay}) 
+                        ${isCorrect ? '✅' : '❌ ERRO! Deveria ser dia ' + expectedDay}
+                    `.trim() + '<br>';
+                });
+                
+                const resultDiv = document.getElementById('contractResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = allDatesCorrect ? 'result success' : 'result error';
+                resultDiv.innerHTML = `
+                    ${allDatesCorrect ? '✅' : '❌'} <strong>${allDatesCorrect ? 'SUCESSO!' : 'ERRO NAS DATAS!'}</strong><br><br>
+                    <strong>Contrato:</strong> ${contractData.contract.contractNumber}<br>
+                    <strong>Cliente:</strong> ${contractData.contract.clientName}<br>
+                    <strong>Valor Total:</strong> R$ ${contractData.contract.totalValue.toFixed(2)}<br>
+                    <strong>Parcelas:</strong> ${installmentsCount}x de R$ ${contractData.contract.installmentValue.toFixed(2)}<br><br>
+                    <strong>Análise das Datas:</strong><br>
+                    ${dateAnalysis}<br>
+                    ${allDatesCorrect ? 
+                        '🎉 <strong>CORREÇÃO DE TIMEZONE FUNCIONANDO!</strong>' : 
+                        '⚠️ <strong>PROBLEMA DE TIMEZONE AINDA PRESENTE!</strong><br>Verifique se fez deploy correto dos arquivos.'
+                    }
+                `;
+                
+                document.getElementById('summaryContract').textContent = allDatesCorrect ? 
+                    '✅ Datas corretas' : 
+                    '❌ Erro nas datas';
+            } catch (error) {
+                showError('contractResult', error.message);
+                document.getElementById('summaryContract').textContent = '❌ Erro ao criar';
+            }
+        }
+
+        // Teste 4: Seed Data
+        async function testSeedData() {
+            if (!authToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+            
+            if (!confirm('⚠️ ATENÇÃO!\n\nIsso irá APAGAR todos os dados existentes e criar novos dados de exemplo.\n\nDeseja continuar?')) {
+                return;
+            }
+            
+            showLoading('seedResult');
+            
+            try {
+                const response = await fetch(`${FUNCTION_URL}/seed-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'X-User-Token': authToken
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao criar seed data');
+                }
+                
+                const resultDiv = document.getElementById('seedResult');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    ✅ <strong>SEED DATA CRIADO COM SUCESSO!</strong><br><br>
+                    <strong>Clientes criados:</strong> ${data.data.clients}<br>
+                    <strong>Contratos criados:</strong> ${data.data.contracts}<br>
+                    <strong>Transações criadas:</strong> ${data.data.transactions}<br><br>
+                    ${JSON.stringify(data, null, 2)}
+                `;
+                
+                document.getElementById('summarySeed').textContent = '✅ Dados criados';
+            } catch (error) {
+                showError('seedResult', error.message);
+                document.getElementById('summarySeed').textContent = '❌ Erro ao criar';
+            }
+        }
+
+        // Helpers
+        function showLoading(elementId) {
+            const div = document.getElementById(elementId);
+            div.style.display = 'block';
+            div.className = 'result info';
+            div.innerHTML = '⏳ Processando...';
+        }
+
+        function showError(elementId, message) {
+            const div = document.getElementById(elementId);
+            div.style.display = 'block';
+            div.className = 'result error';
+            div.innerHTML = `❌ <strong>ERRO!</strong><br><br>${message}`;
+        }
+    </script>
+</body>
+</html>

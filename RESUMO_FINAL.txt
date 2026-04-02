@@ -1,0 +1,188 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║              🔴 PROBLEMA IDENTIFICADO - EDGE FUNCTION                ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ ❌ VOCÊ ESTAVA EDITANDO A PASTA ERRADA!                             │
+└──────────────────────────────────────────────────────────────────────┘
+
+   Local (Editado por você):        Supabase (Produção Real):
+   ┌─────────────────────┐          ┌──────────────────────────┐
+   │ /server/            │          │ /make-server-bd42bc02/   │
+   │  ├─ index.tsx    ✅ │          │  ├─ health.tsx       ✅  │
+   │  ├─ billing...   ✅ │          │  ├─ kv_store.tsx    ✅  │
+   │  ├─ client...    ✅ │          │  ├─ index.tsx       ❌  │
+   │  ├─ health.tsx   ✅ │          │  ├─ billing...      ❌  │
+   │  └─ kv_store.tsx ✅ │          │  └─ client...       ❌  │
+   └─────────────────────┘          └──────────────────────────┘
+        NÃO DEPLOYADO                    FALTAM 3 ARQUIVOS!
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                    ⚡ SOLUÇÃO RÁPIDA (5 MINUTOS)                     ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 1️⃣  ACESSE O SUPABASE DASHBOARD                                     │
+│     https://supabase.com/dashboard/project/.../functions            │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 2️⃣  CLIQUE EM: make-server-bd42bc02                                 │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 3️⃣  COPIE E COLE 3 ARQUIVOS:                                        │
+│                                                                      │
+│     📄 index.tsx (do /server/ para o Dashboard)                     │
+│     📄 billing_routes.tsx (do /server/ para o Dashboard)            │
+│     📄 client_portal_routes.tsx (do /server/ para o Dashboard)      │
+│                                                                      │
+│     ⚠️  Copie TODO o conteúdo de cada arquivo!                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 4️⃣  TESTE SE FUNCIONOU:                                             │
+│                                                                      │
+│     curl https://nbelraenszprsskjnvpc.supabase.co/...               │
+│          .../functions/v1/make-server-bd42bc02/health               │
+│                                                                      │
+│     Resposta esperada: { "version": "2.2.0" }                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                   📚 DOCUMENTAÇÃO DISPONÍVEL                         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 🚀 GUIAS DE AÇÃO                                                     │
+├──────────────────────────────────────────────────────────────────────┤
+│  • LEIA_AQUI_PRIMEIRO.md          → Índice geral                    │
+│  • ACAO_IMEDIATA.md                → Guia super rápido              │
+│  • INSTRUCAO_DEPLOY_EDGE_FUNCTION  → Passo a passo completo         │
+│  • deploy-edge-function-fix.sh     → Script automático (terminal)   │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 📖 ENTENDENDO O PROBLEMA                                             │
+├──────────────────────────────────────────────────────────────────────┤
+│  • RESUMO_PROBLEMA_E_SOLUCAO.md    → Visão geral                    │
+│  • DIAGRAMA_ESTRUTURA.md           → Diagramas visuais              │
+│  • FAQ_DEPLOY.md                   → Perguntas frequentes           │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 🧪 TESTES                                                            │
+├──────────────────────────────────────────────────────────────────────┤
+│  • test-deploy-corrigido.html      → Interface completa de testes   │
+│  • test-timezone-fix.html          → Teste específico de timezone   │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 🔧 REFERÊNCIA TÉCNICA                                                │
+├──────────────────────────────────────────────────────────────────────┤
+│  • CORRECAO_TIMEZONE_DEPLOY.md     → Detalhes das correções         │
+│  • CHANGELOG_CALCULO_PARCELAS.md   → Histórico de mudanças          │
+│  • ARQUITETURA_SISTEMA_COBRANCA    → Documentação completa          │
+└──────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                   🐛 CORREÇÕES IMPLEMENTADAS                         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 1. TIMEZONE FIX - Correção de Datas                                 │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ❌ ANTES (Bug):                                                     │
+│     const date = new Date(2026, 3, 15);                             │
+│     → Salvava: 14/04/2026 (timezone local -1 dia)                   │
+│                                                                      │
+│  ✅ DEPOIS (Correto):                                                │
+│     const date = new Date(Date.UTC(2026, 3, 15));                   │
+│     → Salva: 15/04/2026 (correto!)                                  │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ 2. CÁLCULO DE JUROS - Juros Simples                                 │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ❌ ANTES (Tabela Price - Errado):                                   │
+│     PMT = P × i × (1+i)^n / ((1+i)^n - 1)                           │
+│     Exemplo: R$ 1.000 → parcelas de ~R$ 315,47                      │
+│                                                                      │
+│  ✅ DEPOIS (Juros Simples - Correto):                                │
+│     Total = P × (1 + i × n)                                         │
+│     Parcela = Total ÷ n                                             │
+│     Exemplo: R$ 1.000 × (1 + 0,10 × 4) = R$ 1.400                   │
+│              Parcela: R$ 350,00                                     │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                      ✅ RESULTADO ESPERADO                           ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ APÓS O DEPLOY CORRETO:                                               │
+├──────────────────────────────────────────────────────────────────────┤
+│  ✅ Versão 2.2.0 ativa no Supabase                                   │
+│  ✅ Datas de vencimento salvas corretamente                          │
+│  ✅ Cálculo de parcelas usando juros simples                         │
+│  ✅ Edge Function completa (5 arquivos)                              │
+│  ✅ Sistema 100% funcional                                           │
+│  ✅ Pronto para produção                                             │
+└──────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                    📋 CHECKLIST DE VALIDAÇÃO                         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  [ ] Copiou index.tsx para make-server-bd42bc02                     │
+│  [ ] Copiou billing_routes.tsx para make-server-bd42bc02            │
+│  [ ] Copiou client_portal_routes.tsx para make-server-bd42bc02      │
+│  [ ] Fez deploy de cada arquivo via Dashboard                       │
+│  [ ] Health check retorna versão 2.2.0                              │
+│  [ ] Testou criar contrato via interface                            │
+│  [ ] Validou que datas estão corretas (sem -1 dia)                  │
+│  [ ] Validou cálculo de parcelas (juros simples)                    │
+│  [ ] Sistema funcionando 100%                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                         🎯 PRÓXIMO PASSO                             ║
+║                                                                      ║
+║               Leia: LEIA_AQUI_PRIMEIRO.md                            ║
+║                  ou                                                  ║
+║               Execute: ACAO_IMEDIATA.md                              ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│  💡 DICA: Se tiver dúvidas, consulte FAQ_DEPLOY.md                  │
+│                                                                      │
+│  🚀 BOA SORTE COM O DEPLOY!                                          │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────
+Data: 28/03/2026
+Versão: 1.0
+Status: 🔴 Aguardando deploy
+Projeto: EmprestFlow - Sistema de Controle e Cobrança
+────────────────────────────────────────────────────────────────────────
