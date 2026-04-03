@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { apiCall } from '../lib/supabase';
 import { ArrowLeft, Edit, Phone, Mail, MapPin, Briefcase, DollarSign, FileText, Home, RefreshCw, AlertCircle, User } from 'lucide-react';
-import { MediaDebug } from '../components/MediaDebug';
 
 export default function ClientDetails() {
   const { id } = useParams();
@@ -282,8 +281,6 @@ export default function ClientDetails() {
       </div>
 
       {/* Debug Component - Remove after investigation */}
-      <MediaDebug client={client} />
-
       <Card>
         <CardHeader>
           <CardTitle>Documentos</CardTitle>
