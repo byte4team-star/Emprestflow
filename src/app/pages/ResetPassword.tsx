@@ -7,7 +7,6 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { KeyRound, ArrowLeft, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { apiCall } from '../lib/supabase';
-import logo from 'figma:asset/439f1e573964146bb5f73ca91567104944fcf478.png';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -124,7 +123,7 @@ export default function ResetPassword() {
         <Card className="border-2 border-amber-400/50 shadow-2xl">
           <CardHeader className="space-y-1 pb-4">
             <div className="flex justify-center mb-4">
-              <img src={logo} alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
+              <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
             </div>
             <CardTitle className="text-2xl md:text-3xl text-center font-bold text-gray-900">
               Redefinir Senha

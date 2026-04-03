@@ -7,7 +7,6 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Mail, Phone, ArrowLeft, Loader2, KeyRound } from 'lucide-react';
 import { apiCall } from '../lib/supabase';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 type RecoveryMethod = 'email' | 'phone' | null;
 
@@ -85,7 +84,7 @@ export default function ForgotPassword() {
           <Card className="border-2 border-amber-400/50 shadow-2xl">
             <CardHeader className="space-y-1 pb-4">
               <div className="flex justify-center mb-4">
-                <img src={logo} alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
+                <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
               </div>
               <CardTitle className="text-2xl md:text-3xl text-center font-bold text-gray-900">
                 Recuperar Senha
@@ -140,7 +139,7 @@ export default function ForgotPassword() {
         <Card className="border-2 border-amber-400/50 shadow-2xl">
           <CardHeader className="space-y-1 pb-4">
             <div className="flex justify-center mb-4">
-              <img src={logo} alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
+              <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-20 w-20 object-contain rounded-full drop-shadow-lg" />
             </div>
             <CardTitle className="text-2xl md:text-3xl text-center font-bold text-gray-900">
               {method === 'email' ? 'Recuperar por Email' : 'Recuperar por Celular'}
