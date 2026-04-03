@@ -7,7 +7,6 @@ import { Button } from '../components/ui/button';
 import { User, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { toast } from 'sonner';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export default function ClientPortalLogin() {
@@ -69,7 +68,7 @@ export default function ClientPortalLogin() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src={logo} 
+              src="/logo.png"
               alt="ALEMÃO.CREFISA" 
               className="h-20 w-20 object-contain rounded-full drop-shadow-lg"
             />

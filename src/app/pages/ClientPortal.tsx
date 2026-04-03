@@ -41,7 +41,6 @@ import {
   Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
@@ -358,7 +357,7 @@ export default function ClientPortal() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={logo} 
+                src="/logo.png"
                 alt="ALEMÃO.CREFISA" 
                 className="h-12 w-12 object-contain rounded-full drop-shadow-md"
               />

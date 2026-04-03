@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Lock, Mail, User, BarChart3, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 const apiUrl = `https://${projectId}.supabase.co/functions/v1/make-server-bd42bc02`;
 
@@ -170,7 +169,7 @@ export default function Login() {
         <CardHeader className="space-y-1 text-center bg-gradient-to-r from-emerald-50 to-amber-50/30 rounded-t-lg">
           {/* Logo dentro do modal */}
           <div className="flex items-center justify-center gap-3 mb-2">
-            <img src={logo} alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
+            <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
             <div className="text-left">
               <h1 className="text-xl font-bold text-amber-600">ALEMÃO.CREFISA</h1>
               <p className="text-xs text-emerald-700">Sistema de Gestão</p>
