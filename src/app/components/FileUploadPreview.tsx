@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload, X, FileText, Video, Camera, Image as ImageIcon } from 'lucide-react';
 import { Button } from './ui/button';
+import { toast } from 'sonner';
 
 interface FileUploadPreviewProps {
   id?: string;
@@ -29,21 +30,35 @@ export default function FileUploadPreview({
   };
 
   const processFile = (selectedFile: File) => {
+    const fileSizeMB = selectedFile.size / 1024 / 1024;
+    const maxSizeMB = type === 'video' ? 30 : 5; // 30MB para vídeos, 5MB para imagens
+
     // Validate file type
     if (type === 'image' && !selectedFile.type.startsWith('image/')) {
-      alert('Por favor, selecione uma imagem válida');
+      toast.error('Por favor, selecione uma imagem válida', {
+        description: `Arquivo selecionado: ${selectedFile.type || 'desconhecido'}`,
+      });
       return;
     }
     if (type === 'video' && !selectedFile.type.startsWith('video/')) {
-      alert('Por favor, selecione um vídeo válido');
+      toast.error('Por favor, selecione um vídeo válido', {
+        description: `Arquivo selecionado: ${selectedFile.type || 'desconhecido'}`,
+      });
       return;
     }
 
-    // Validate file size (max 50MB)
-    if (selectedFile.size > 50 * 1024 * 1024) {
-      alert('O arquivo deve ter no máximo 50MB');
+    // Validate file size (5MB for images, 30MB for videos)
+    if (selectedFile.size > maxSizeMB * 1024 * 1024) {
+      toast.error('Arquivo muito grande!', {
+        description: `O arquivo tem ${fileSizeMB.toFixed(2)} MB. Limite máximo: ${maxSizeMB} MB ${type === 'video' ? 'para vídeos' : 'para imagens'}. Comprima ou escolha outro arquivo.`,
+      });
       return;
     }
+
+    // Success feedback
+    toast.success('Arquivo carregado!', {
+      description: `${selectedFile.name} (${fileSizeMB.toFixed(2)} MB)`,
+    });
 
     // Create preview
     const reader = new FileReader();
@@ -100,7 +115,10 @@ export default function FileUploadPreview({
                 <span className="font-semibold">Clique para selecionar</span> ou arraste aqui
               </p>
               <p className="text-xs text-gray-500 text-center px-2">
-                {type === 'image' ? 'PNG, JPG até 50MB' : 'MP4, MOV até 50MB'}
+                {type === 'image' ? 'PNG, JPG até 5MB' : 'MP4, MOV até 30MB'}
+              </p>
+              <p className="text-xs text-red-500 font-semibold mt-1">
+                ⚠️ Máximo {type === 'video' ? '30MB' : '5MB'}
               </p>
             </div>
             <input

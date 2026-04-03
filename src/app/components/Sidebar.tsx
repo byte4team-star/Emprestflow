@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router';
-import { Home, Users, FileText, Shield, DollarSign, MessageSquare, X, UserCog } from 'lucide-react';
+import { Home, Users, FileText, Shield, DollarSign, MessageSquare, X, UserCog, KeyRound } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
+import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,7 +17,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Clientes', href: '/clients', icon: Users },
     { name: 'Contratos', href: '/contracts', icon: FileText },
     { name: 'Financeiro', href: '/financial', icon: DollarSign },
-    { name: 'Lembretes', href: '/reminders', icon: MessageSquare },
+    { name: 'Whatsapp', href: '/reminders', icon:  MessageSquare},
+    { name: '🔑 Alterar Senha', href: '/change-password', icon: KeyRound },
     ...(user?.role === 'admin' ? [
       { name: '👥 Usuários', href: '/users', icon: UserCog },
       { name: '🔒 Segurança', href: '/security', icon: Shield },
@@ -50,7 +52,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="p-6 border-b-2 border-amber-500/30">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
+            <img src={logo} alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
             <div>
               <h1 className="text-xl font-bold text-amber-400">ALEMÃO.CREFISA</h1>
               <p className="text-xs text-emerald-100">Sistema de Gestão</p>
@@ -58,7 +60,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto p-[10px]">
           <ul className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -70,14 +72,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <Link
                     to={item.href}
                     onClick={onClose}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-amber-500 text-emerald-950 font-semibold shadow-lg'
-                        : 'text-emerald-100 hover:bg-emerald-800 hover:text-amber-300'
-                    }`}
+                    className={`flex items-center gap-1.5 rounded-lg transition-colors ${ isActive ? 'bg-amber-500 text-emerald-950 font-semibold shadow-lg' : 'text-emerald-100 hover:bg-emerald-800 hover:text-amber-300' } p-[10px]`}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.name}</span>
+                    <Icon className="h-4 w-4" />
+                    <span className="font-medium text-sm">{item.name}</span>
                   </Link>
                 </li>
               );
@@ -85,7 +83,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </ul>
         </nav>
 
-        <div className="p-4 border-t-2 border-amber-500/30">
+        <div className="border-t-2 border-amber-500/30 p-[10px]">
           <div className="text-sm">
             <p className="font-semibold text-amber-400">{user?.name}</p>
             <p className="text-xs text-emerald-100">{user?.email}</p>
@@ -93,7 +91,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                 user?.role === 'admin' ? 'bg-amber-600 text-emerald-950' : 'bg-emerald-700 text-amber-100'
               }`}>
-                {user?.role === 'admin' ? 'Administrador' : 'Operador'}
+                {user?.role === 'admin' ? 'Administrador' : 'Cliente'}
               </span>
             </p>
           </div>
