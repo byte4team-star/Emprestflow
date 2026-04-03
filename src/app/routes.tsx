@@ -2,7 +2,6 @@ import { createBrowserRouter } from "react-router";
 import AuthLayout from "./components/AuthLayout";
 import Root from "./components/Root";
 import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientForm from "./pages/ClientForm";
