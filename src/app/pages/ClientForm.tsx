@@ -11,7 +11,6 @@ import { Checkbox } from '../components/ui/checkbox';
 import { apiCall } from '../lib/supabase';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Upload, FileText, Eye, Download, CheckCircle, Clock, Home, X, Trash2, Plus, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
-import MediaGalleryUploader from '../components/MediaGalleryUploader';
 
 interface ClientFormData {
   fullName: string;
