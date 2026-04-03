@@ -1,5 +1,11 @@
-import { Outlet } from 'react-router';
+// src/components/AuthLayout.tsx
+import { ReactNode } from "react";
+import { AuthProvider } from "../lib/auth-context";
 
-export default function AuthLayout() {
-  return <Outlet />;
+interface AuthLayoutProps {
+  children: ReactNode;
+}
+
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  return <AuthProvider>{children}</AuthProvider>;
 }
