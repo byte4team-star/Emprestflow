@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Lock, Mail, User, BarChart3, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
+<img src="/logo.png" />
 
 const apiUrl = `https://${projectId}.supabase.co/functions/v1/make-server-bd42bc02`;
 
