@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../components/ui/checkbox';
 import { apiCall } from '../lib/supabase';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Upload, FileText, Eye, Download, CheckCircle, Clock, Home } from 'lucide-react';
-import DocumentUploader from '../components/DocumentUploader';
+import { ArrowLeft, Save, Upload, FileText, Eye, Download, CheckCircle, Clock, Home, X, Trash2, Plus, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
+import MediaGalleryUploader from '../components/MediaGalleryUploader';
 
 interface ClientFormData {
   fullName: string;
@@ -29,6 +29,14 @@ interface ClientFormData {
   referredByName?: string;
   referredByPhone?: string;
   lgpdConsent: boolean;
+}
+
+interface DocumentInfo {
+  path: string;
+  fileName: string;
+  mimeType: string;
+  uploadedAt: string;
+  url?: string;
 }
 
 export default function ClientForm() {
@@ -59,6 +67,7 @@ export default function ClientForm() {
     video: null,
   });
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [existingClient, setExistingClient] = useState<any>(null); // 🔥 Store full client for merge
 
   // Refs for document uploaders
   const frontUploaderRef = useRef<HTMLDivElement>(null);
@@ -100,6 +109,8 @@ export default function ClientForm() {
         setValue('referredByName', client.referredBy.name);
         setValue('referredByPhone', client.referredBy.phone);
       }
+
+      setExistingClient(client); // 🔥 Store full client for merge
     } catch (error) {
       console.error('Error loading client:', error);
       toast.error('Erro ao carregar dados do cliente');
@@ -187,8 +198,15 @@ export default function ClientForm() {
             }
           : null,
       };
+      
+      // 🔥 CRITICAL: Remove documents from payload to prevent overwriting
+      // Documents are managed separately via upload endpoints
+      delete (payload as any).documents;
+      
+      console.log('[CLIENT_FORM] Payload keys:', Object.keys(payload));
 
       if (isEditing) {
+        console.log('[CLIENT_FORM] Updating client, excluding documents from payload');
         const response = await apiCall(`/clients/${id}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
@@ -432,32 +450,7 @@ export default function ClientForm() {
         </Card>
 
         {/* Indicação */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Indicação (Opcional)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="referredByName">Nome de quem indicou</Label>
-                <Input
-                  id="referredByName"
-                  {...register('referredByName')}
-                  placeholder="Nome da pessoa"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="referredByPhone">Telefone de quem indicou</Label>
-                <Input
-                  id="referredByPhone"
-                  {...register('referredByPhone')}
-                  placeholder="(11) 98765-4321"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        
 
         {/* LGPD Consent */}
         <Card>
@@ -500,10 +493,10 @@ export default function ClientForm() {
               Upload de Documentos
             </CardTitle>
             <CardDescription>
-              Envie os documentos obrigatórios do cliente (frente, verso, selfie e vídeo de validação)
+              Envie as fotos (4 obrigatórias + 2 opcionais) e vídeos (1 obrigatório + 1 opcional) do cliente
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             {!clientId ? (
               <div className="text-center py-8 px-4 bg-white rounded-lg border-2 border-dashed border-amber-300">
                 <Upload className="h-12 w-12 mx-auto mb-3 text-amber-500" />
@@ -516,106 +509,30 @@ export default function ClientForm() {
               </div>
             ) : (
               <>
-                <div ref={frontUploaderRef} className="transition-all duration-300 rounded-lg">
-                  <DocumentUploader 
-                    clientId={clientId} 
-                    documentType="front" 
-                    label="📄 Documento (Frente)" 
-                    onUploadComplete={loadClientDocuments} 
-                  />
-                </div>
-                <div ref={backUploaderRef} className="transition-all duration-300 rounded-lg">
-                  <DocumentUploader 
-                    clientId={clientId} 
-                    documentType="back" 
-                    label="📄 Documento (Verso)" 
-                    onUploadComplete={loadClientDocuments} 
-                  />
-                </div>
-                <div ref={selfieUploaderRef} className="transition-all duration-300 rounded-lg">
-                  <DocumentUploader 
-                    clientId={clientId} 
-                    documentType="selfie" 
-                    label="🤳 Selfie com Documento" 
-                    onUploadComplete={loadClientDocuments} 
-                  />
-                </div>
-                <div ref={videoUploaderRef} className="transition-all duration-300 rounded-lg">
-                  <DocumentUploader
-                    clientId={clientId}
-                    documentType="video"
-                    label="🎥 Vídeo de Validação"
-                    accept="video/*"
-                    onUploadComplete={loadClientDocuments}
-                  />
-                </div>
+                {/* Fotos Gallery */}
+                <MediaGalleryUploader
+                  clientId={clientId}
+                  mediaType="foto"
+                  label="📷 Fotos do Documento (RG, CNH, etc.)"
+                  maxCount={6}
+                  requiredCount={4}
+                  maxSizeMB={5}
+                  onUpdate={loadClientDocuments}
+                />
 
-                {/* Documents Status Section */}
-                {clientDocuments && (
-                  <div className="mt-8 pt-6 border-t">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      Documentos Carregados
-                    </h3>
-                    
-                    {loadingDocuments ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          { type: 'front', label: 'Frente' },
-                          { type: 'back', label: 'Verso' },
-                          { type: 'selfie', label: 'Selfie' },
-                          { type: 'video', label: 'Vídeo' },
-                        ].map(({ type, label }) => {
-                          const doc = clientDocuments[type];
-                          const hasDocument = doc && doc.path;
-                          
-                          return (
-                            <div
-                              key={type}
-                              className={`p-4 border rounded-lg text-center ${
-                                hasDocument
-                                  ? 'border-green-500 bg-green-50'
-                                  : 'border-gray-300'
-                              }`}
-                            >
-                              <p className="text-sm font-medium capitalize">
-                                {label}
-                              </p>
-                              <p className="text-xs text-gray-600 mt-1">
-                                {hasDocument ? '✓ Enviado' : '✗ Pendente'}
-                              </p>
-                              <div className="flex flex-col gap-1 mt-2">
-                                {hasDocument && (
-                                  <button
-                                    type="button"
-                                    onClick={() => viewDocument(type)}
-                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                  >
-                                    Ver documento
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => scrollToUploader(type)}
-                                  className="text-xs text-orange-600 hover:text-orange-800 underline font-medium"
-                                >
-                                  {hasDocument ? '↻ Reenviar' : '↑ Enviar'}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* Vídeos Gallery */}
+                <MediaGalleryUploader
+                  clientId={clientId}
+                  mediaType="video"
+                  label="🎥 Vídeos de Validação"
+                  maxCount={2}
+                  requiredCount={1}
+                  maxSizeMB={35}
+                  onUpdate={loadClientDocuments}
+                />
 
                 <div className="mt-6 flex gap-4">
-                  <Button onClick={() => navigate(`/clients/${clientId}`)}>
+                  <Button type="button" onClick={() => navigate(`/clients/${clientId}`)}>
                     Ver Detalhes do Cliente
                   </Button>
                 </div>

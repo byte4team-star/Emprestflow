@@ -414,7 +414,12 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
       // Parse FormData instead of JSON
       const formData = await c.req.formData();
       console.log('[CLIENT_PORTAL_COMPLETE_REG] FormData received');
-      
+
+      // Debug: Log all FormData keys
+      const allKeys = Array.from(formData.keys());
+      console.log('[CLIENT_PORTAL_COMPLETE_REG] All FormData keys:', allKeys);
+      console.log('[CLIENT_PORTAL_COMPLETE_REG] Total entries:', allKeys.length);
+
       // Extract text fields
       const fullName = formData.get('fullName');
       const cpfCnpj = formData.get('cpfCnpj');
@@ -435,21 +440,34 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
       const documentPhoto2 = formData.get('documentPhoto2');
       const documentPhoto3 = formData.get('documentPhoto3');
       const documentPhoto4 = formData.get('documentPhoto4');
-      const documentPhoto5 = formData.get('documentPhoto5');
-      const documentPhoto6 = formData.get('documentPhoto6');
+      const documentPhoto5 = formData.get('documentPhoto5'); // Optional
+      const documentPhoto6 = formData.get('documentPhoto6'); // Optional
       const documentVideo1 = formData.get('documentVideo1');
-      const documentVideo2 = formData.get('documentVideo2');
+      const documentVideo2 = formData.get('documentVideo2'); // Optional
 
       console.log('[CLIENT_PORTAL_COMPLETE_REG] Files received:', {
-        profilePhoto: profilePhoto ? profilePhoto.name : 'none',
-        documentPhoto1: documentPhoto1 ? documentPhoto1.name : 'none',
-        documentPhoto2: documentPhoto2 ? documentPhoto2.name : 'none',
-        documentPhoto3: documentPhoto3 ? documentPhoto3.name : 'none',
-        documentPhoto4: documentPhoto4 ? documentPhoto4.name : 'none',
-        documentPhoto5: documentPhoto5 ? documentPhoto5.name : 'none',
-        documentPhoto6: documentPhoto6 ? documentPhoto6.name : 'none',
-        documentVideo1: documentVideo1 ? documentVideo1.name : 'none',
-        documentVideo2: documentVideo2 ? documentVideo2.name : 'none',
+        profilePhoto: profilePhoto ? `${profilePhoto.name} (${(profilePhoto.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentPhoto1: documentPhoto1 ? `${documentPhoto1.name} (${(documentPhoto1.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentPhoto2: documentPhoto2 ? `${documentPhoto2.name} (${(documentPhoto2.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentPhoto3: documentPhoto3 ? `${documentPhoto3.name} (${(documentPhoto3.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentPhoto4: documentPhoto4 ? `${documentPhoto4.name} (${(documentPhoto4.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentPhoto5: documentPhoto5 ? `${documentPhoto5.name} (${(documentPhoto5.size / 1024 / 1024).toFixed(2)}MB)` : 'none (optional)',
+        documentPhoto6: documentPhoto6 ? `${documentPhoto6.name} (${(documentPhoto6.size / 1024 / 1024).toFixed(2)}MB)` : 'none (optional)',
+        documentVideo1: documentVideo1 ? `${documentVideo1.name} (${(documentVideo1.size / 1024 / 1024).toFixed(2)}MB)` : 'none',
+        documentVideo2: documentVideo2 ? `${documentVideo2.name} (${(documentVideo2.size / 1024 / 1024).toFixed(2)}MB)` : 'none (optional)',
+      });
+
+      // Debug: Check types
+      console.log('[CLIENT_PORTAL_COMPLETE_REG] File types check:', {
+        profilePhoto: profilePhoto instanceof File,
+        documentPhoto1: documentPhoto1 instanceof File,
+        documentPhoto2: documentPhoto2 instanceof File,
+        documentPhoto3: documentPhoto3 instanceof File,
+        documentPhoto4: documentPhoto4 instanceof File,
+        documentPhoto5: documentPhoto5 instanceof File,
+        documentPhoto6: documentPhoto6 instanceof File,
+        documentVideo1: documentVideo1 instanceof File,
+        documentVideo2: documentVideo2 instanceof File,
       });
 
       // Validation - all fields are required
@@ -458,10 +476,22 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
         return c.json({ error: 'Todos os campos obrigatórios devem ser preenchidos' }, 400);
       }
 
-      // Validation - all 8 documents are required
-      if (!documentPhoto1 || !documentPhoto2 || !documentPhoto3 || !documentPhoto4 || 
-          !documentPhoto5 || !documentPhoto6 || !documentVideo1 || !documentVideo2) {
-        return c.json({ error: 'Todos os 8 documentos obrigatórios devem ser enviados (6 fotos + 2 vídeos)' }, 400);
+      // Validation - profile photo + 4 document photos + 1 video are required (photo5, photo6, video2 are optional)
+      if (!profilePhoto || !documentPhoto1 || !documentPhoto2 || !documentPhoto3 || !documentPhoto4 || !documentVideo1) {
+        const missingDocs = [];
+        if (!profilePhoto) missingDocs.push('profilePhoto');
+        if (!documentPhoto1) missingDocs.push('documentPhoto1');
+        if (!documentPhoto2) missingDocs.push('documentPhoto2');
+        if (!documentPhoto3) missingDocs.push('documentPhoto3');
+        if (!documentPhoto4) missingDocs.push('documentPhoto4');
+        if (!documentVideo1) missingDocs.push('documentVideo1');
+
+        console.error('[CLIENT_PORTAL_COMPLETE_REG] Missing required documents:', missingDocs);
+
+        return c.json({
+          error: 'Foto de perfil, 4 fotos de documentos e 1 vídeo são obrigatórios',
+          missing: missingDocs,
+        }, 400);
       }
 
       const clientData = await kv.get(`client:${clientId}`);
@@ -510,26 +540,26 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
       // Upload documents to Supabase Storage
       const documentUrls: any = {
         profilePhoto: null,
-        photo1: null,
-        photo2: null,
-        photo3: null,
-        photo4: null,
-        photo5: null,
-        photo6: null,
+        foto1: null,  // Changed from photo1
+        foto2: null,  // Changed from photo2
+        foto3: null,  // Changed from photo3
+        foto4: null,  // Changed from photo4
+        foto5: null,  // Changed from photo5 (Optional)
+        foto6: null,  // Changed from photo6 (Optional)
         video1: null,
-        video2: null,
+        video2: null, // Optional
       };
 
       const documentsToUpload = [
         { key: 'profilePhoto', file: profilePhoto, type: 'profile' },
-        { key: 'photo1', file: documentPhoto1, type: 'documents/photo1' },
-        { key: 'photo2', file: documentPhoto2, type: 'documents/photo2' },
-        { key: 'photo3', file: documentPhoto3, type: 'documents/photo3' },
-        { key: 'photo4', file: documentPhoto4, type: 'documents/photo4' },
-        { key: 'photo5', file: documentPhoto5, type: 'documents/photo5' },
-        { key: 'photo6', file: documentPhoto6, type: 'documents/photo6' },
-        { key: 'video1', file: documentVideo1, type: 'documents/video1' },
-        { key: 'video2', file: documentVideo2, type: 'documents/video2' },
+        { key: 'foto1', file: documentPhoto1, type: 'foto1' },      // Changed key
+        { key: 'foto2', file: documentPhoto2, type: 'foto2' },      // Changed key
+        { key: 'foto3', file: documentPhoto3, type: 'foto3' },      // Changed key
+        { key: 'foto4', file: documentPhoto4, type: 'foto4' },      // Changed key
+        { key: 'foto5', file: documentPhoto5, type: 'foto5' },      // Changed key (Optional)
+        { key: 'foto6', file: documentPhoto6, type: 'foto6' },      // Changed key (Optional)
+        { key: 'video1', file: documentVideo1, type: 'video1' },
+        { key: 'video2', file: documentVideo2, type: 'video2' },    // Optional
       ];
 
       for (const { key, file, type } of documentsToUpload) {
@@ -541,7 +571,11 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
             const arrayBuffer = await file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             
-            const filePath = `${clientId}/${type}/${file.name}`;
+            // Simplified path structure: clientId/filename.ext
+            // Use type as the base filename to maintain consistency
+            const fileExtension = file.name.split('.').pop();
+            const fileName = type === 'profile' ? `profile.${fileExtension}` : `${type}.${fileExtension}`;
+            const filePath = `${clientId}/${fileName}`;
             const contentType = file.type || 'application/octet-stream';
             
             const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
@@ -593,12 +627,12 @@ export function addClientPortalRoutes(app: any, supabaseAdmin: any, kv: any, log
 
       console.log('[CLIENT_PORTAL_COMPLETE_REG] Saving client with documents:', {
         profilePhoto: !!documentUrls.profilePhoto,
-        photo1: !!documentUrls.photo1,
-        photo2: !!documentUrls.photo2,
-        photo3: !!documentUrls.photo3,
-        photo4: !!documentUrls.photo4,
-        photo5: !!documentUrls.photo5,
-        photo6: !!documentUrls.photo6,
+        foto1: !!documentUrls.foto1,  // Changed from photo1
+        foto2: !!documentUrls.foto2,  // Changed from photo2
+        foto3: !!documentUrls.foto3,  // Changed from photo3
+        foto4: !!documentUrls.foto4,  // Changed from photo4
+        foto5: !!documentUrls.foto5,  // Changed from photo5
+        foto6: !!documentUrls.foto6,  // Changed from photo6
         video1: !!documentUrls.video1,
         video2: !!documentUrls.video2,
       });

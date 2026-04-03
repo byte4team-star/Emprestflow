@@ -220,6 +220,9 @@ export default function ContractDetails() {
           <CardContent>
             <div className="text-lg font-bold break-words">{contract.interestRate}%</div>
             <p className="text-xs text-gray-600 mt-1">Multa: {contract.lateFeeRate}%</p>
+            <p className="text-xs text-gray-600 mt-1">
+              Parcelas: {contract.installmentPeriod === 'daily' ? 'Diárias' : contract.installmentPeriod === 'weekly' ? 'Semanais' : 'Mensais'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -283,14 +286,7 @@ export default function ContractDetails() {
                                 <DollarSign className="h-3 w-3 mr-1" />
                                 Pagar
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSendReminder(installment, overdue ? 'overdue' : 'before')}
-                              >
-                                <Send className="h-3 w-3 mr-1" />
-                                WhatsApp
-                              </Button>
+                              
                             </>
                           )}
                         </div>

@@ -50,8 +50,10 @@ export default function ClientPortalFirstAccess() {
   const [clientName, setClientName] = useState('');
   const [birthDate, setBirthDate] = useState<Date | undefined>(undefined);
   const [profilePhoto, setProfilePhoto] = useState<DocumentFile | null>(null);
+  const [showErrorOverlay, setShowErrorOverlay] = useState(false);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
   
-  // Document upload states
+  // Document upload states - 4 fotos obrigatórias + 2 opcionais + 1 vídeo obrigatório + 1 opcional
   const [documents, setDocuments] = useState<{
     photo1: DocumentFile | null;
     photo2: DocumentFile | null;
@@ -86,8 +88,52 @@ export default function ClientPortalFirstAccess() {
 
   const lgpdConsent = watch('lgpdConsent');
 
-  // Check if all documents are uploaded
-  const allDocumentsUploaded = documents.photo1 && documents.photo2 && documents.photo3 && documents.photo4 && documents.photo5 && documents.photo6 && documents.video1 && documents.video2;
+  // Check if all REQUIRED documents are uploaded (4 fotos + 1 vídeo obrigatórios)
+  const allDocumentsUploaded =
+    profilePhoto !== null &&
+    documents.photo1 !== null &&
+    documents.photo2 !== null &&
+    documents.photo3 !== null &&
+    documents.photo4 !== null &&
+    documents.video1 !== null;
+    // photo5, photo6, video2 são OPCIONAIS
+
+  // Debug logging
+  console.log('[DOCUMENTS_CHECK]', {
+    profilePhoto: !!profilePhoto,
+    photo1: !!documents.photo1,
+    photo2: !!documents.photo2,
+    photo3: !!documents.photo3,
+    photo4: !!documents.photo4,
+    photo5: !!documents.photo5,
+    photo6: !!documents.photo6,
+    video1: !!documents.video1,
+    video2: !!documents.video2,
+    allDocumentsUploaded,
+  });
+
+  // Count uploaded documents
+  const uploadedCount = [
+    profilePhoto,
+    documents.photo1,
+    documents.photo2,
+    documents.photo3,
+    documents.photo4,
+    documents.photo5,
+    documents.photo6,
+    documents.video1,
+    documents.video2
+  ].filter(doc => doc !== null).length;
+
+  const totalRequiredDocuments = 6; // 1 profile photo + 4 document photos + 1 video
+
+  useEffect(() => {
+    // Register lgpdConsent with validation
+    register('lgpdConsent', { 
+      required: 'Você precisa aceitar os termos da LGPD para continuar',
+      validate: (value) => value === true || 'Você precisa aceitar os termos da LGPD para continuar'
+    });
+  }, [register]);
 
   useEffect(() => {
     // Wait for auth to load
@@ -157,15 +203,123 @@ export default function ClientPortalFirstAccess() {
     navigate('/login');
   };
 
+  const handleSubmitClick = () => {
+    console.log('[SUBMIT_CLICK] Starting validation...');
+    
+    // Validate conditions before submitting
+    const errors: string[] = [];
+
+    // Check LGPD consent
+    if (!lgpdConsent || lgpdConsent !== true) {
+      errors.push('Você precisa aceitar os termos da LGPD');
+    }
+
+    // Check all REQUIRED documents (photo5, photo6, video2 são opcionais)
+    if (!allDocumentsUploaded) {
+      const missingDocs: string[] = [];
+      if (!profilePhoto) missingDocs.push('Foto de Perfil');
+      if (!documents.photo1) missingDocs.push('Foto do Documento 1');
+      if (!documents.photo2) missingDocs.push('Foto do Documento 2');
+      if (!documents.photo3) missingDocs.push('Foto do Documento 3');
+      if (!documents.photo4) missingDocs.push('Foto do Documento 4');
+      if (!documents.video1) missingDocs.push('Vídeo de Identificação 1');
+      // photo5, photo6, video2 são OPCIONAIS - não aparecem aqui
+
+      errors.push(`Documentos obrigatórios faltando: ${missingDocs.join(', ')}`);
+    }
+
+    // If there are errors, show overlay
+    if (errors.length > 0) {
+      console.log('[SUBMIT_CLICK] Validation failed:', errors);
+      setErrorMessages(errors);
+      setShowErrorOverlay(true);
+      return;
+    }
+
+    console.log('[SUBMIT_CLICK] ✅ Validation passed, triggering form submit...');
+    // Otherwise, trigger form submit
+    handleSubmit(onSubmit)();
+  };
+
   const onSubmit = async (data: ClientFormData) => {
-    if (!lgpdConsent) {
+    console.log('[SUBMIT] Form data:', data);
+    console.log('[SUBMIT] lgpdConsent value:', lgpdConsent, typeof lgpdConsent);
+    
+    // Validate all required fields
+    const missingFields: string[] = [];
+    if (!data.fullName) missingFields.push('Nome Completo');
+    if (!data.cpfCnpj) missingFields.push('CPF/CNPJ');
+    if (!data.rg) missingFields.push('RG');
+    if (!data.birthDate) missingFields.push('Data de Nascimento');
+    if (!data.phone) missingFields.push('Telefone');
+    if (!data.email) missingFields.push('E-mail');
+    if (!data.address) missingFields.push('Endereço');
+    if (!data.occupation) missingFields.push('Profissão');
+    if (!data.company) missingFields.push('Empresa');
+    if (!data.monthlyIncome) missingFields.push('Renda Mensal');
+    
+    if (missingFields.length > 0) {
+      toast.error(`Campos obrigatórios faltando: ${missingFields.join(', ')}`);
+      console.error('[SUBMIT] Missing required fields:', missingFields);
+      return;
+    }
+    
+    // Validate LGPD consent explicitly
+    if (!lgpdConsent || lgpdConsent !== true) {
       toast.error('Você precisa aceitar os termos da LGPD para continuar');
       return;
     }
 
-    // Check if all documents are uploaded
+    // Check if all REQUIRED documents are uploaded (photo5, photo6, video2 são opcionais)
     if (!allDocumentsUploaded) {
-      toast.error('Você precisa enviar todos os 8 documentos obrigatórios');
+      const missingDocs: string[] = [];
+      if (!profilePhoto) missingDocs.push('Foto de Perfil');
+      if (!documents.photo1) missingDocs.push('Foto do Documento 1');
+      if (!documents.photo2) missingDocs.push('Foto do Documento 2');
+      if (!documents.photo3) missingDocs.push('Foto do Documento 3');
+      if (!documents.photo4) missingDocs.push('Foto do Documento 4');
+      if (!documents.video1) missingDocs.push('Vídeo de Identificação 1');
+      // photo5, photo6, video2 são OPCIONAIS - não aparecem como faltando
+
+      toast.error(`Documentos obrigatórios faltando: ${missingDocs.join(', ')}`);
+      console.error('[SUBMIT] Missing required documents:', missingDocs);
+      return;
+    }
+
+    // Check file sizes (5MB for images, 30MB for videos)
+    const maxImageSizeMB = 5;
+    const maxVideoSizeMB = 30;
+    const maxImageSizeBytes = maxImageSizeMB * 1024 * 1024;
+    const maxVideoSizeBytes = maxVideoSizeMB * 1024 * 1024;
+    const oversizedFiles: string[] = [];
+
+    const allFiles = [
+      { name: 'Foto de Perfil', file: profilePhoto?.file, type: 'image' },
+      { name: 'Foto do Documento 1', file: documents.photo1?.file, type: 'image' },
+      { name: 'Foto do Documento 2', file: documents.photo2?.file, type: 'image' },
+      { name: 'Foto do Documento 3', file: documents.photo3?.file, type: 'image' },
+      { name: 'Foto do Documento 4', file: documents.photo4?.file, type: 'image' },
+      { name: 'Foto do Documento 5', file: documents.photo5?.file, type: 'image' },
+      { name: 'Foto do Documento 6', file: documents.photo6?.file, type: 'image' },
+      { name: 'Vídeo de Identificação 1', file: documents.video1?.file, type: 'video' },
+      { name: 'Vídeo de Identificação 2', file: documents.video2?.file, type: 'video' },
+    ];
+
+    allFiles.forEach(({ name, file, type }) => {
+      if (file) {
+        const maxSize = type === 'video' ? maxVideoSizeBytes : maxImageSizeBytes;
+        const maxSizeMB = type === 'video' ? maxVideoSizeMB : maxImageSizeMB;
+        if (file.size > maxSize) {
+          oversizedFiles.push(`${name} (${(file.size / 1024 / 1024).toFixed(2)} MB > ${maxSizeMB}MB)`);
+        }
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      toast.error('Arquivos muito grandes!', {
+        description: `Os seguintes arquivos excedem o limite (imagens: ${maxImageSizeMB}MB, vídeos: ${maxVideoSizeMB}MB):\n${oversizedFiles.join('\n')}`,
+      });
+      console.error('[SUBMIT] Oversized files:', oversizedFiles);
       return;
     }
 
@@ -173,59 +327,110 @@ export default function ClientPortalFirstAccess() {
 
     try {
       console.log('[SUBMIT] Starting form submission with documents...');
+
+      // Calculate total size
+      const totalSizeMB = allFiles.reduce((sum, { file }) => {
+        return sum + (file ? file.size / 1024 / 1024 : 0);
+      }, 0);
+
+      console.log('[SUBMIT] File sizes:');
+      allFiles.forEach(({ name, file }) => {
+        if (file) {
+          console.log(`  ${name}: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        }
+      });
+      console.log(`[SUBMIT] Total size: ${totalSizeMB.toFixed(2)} MB`);
       
       // Create FormData
       const formData = new FormData();
       
-      // Add text fields
+      // Add text fields - ensure lgpdConsent is sent as 'true' string
+      console.log('[SUBMIT] Form fields to send:');
       Object.keys(data).forEach((key) => {
         const value = data[key as keyof ClientFormData];
         if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
+          // Convert boolean to string 'true' or 'false'
+          const stringValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
+          formData.append(key, stringValue);
+          console.log(`  ${key}: ${stringValue}`);
+        } else {
+          console.warn(`  ${key}: EMPTY/NULL`);
         }
       });
+      
+      console.log('[SUBMIT] lgpdConsent being sent:', formData.get('lgpdConsent'));
       
       // Add profile photo
       if (profilePhoto?.file) {
         formData.append('profilePhoto', profilePhoto.file);
-        console.log('[SUBMIT] Added profilePhoto:', profilePhoto.file.name);
+        console.log('[SUBMIT] ✅ Added profilePhoto:', profilePhoto.file.name, `(${(profilePhoto.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing profilePhoto');
       }
-      
-      // Add document files
+
+      // Add document files with detailed logging - 4 fotos obrigatórias + 2 opcionais + 1 vídeo obrigatório + 1 opcional
       if (documents.photo1?.file) {
         formData.append('documentPhoto1', documents.photo1.file);
-        console.log('[SUBMIT] Added documentPhoto1:', documents.photo1.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto1:', documents.photo1.file.name, `(${(documents.photo1.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing documentPhoto1');
       }
+
       if (documents.photo2?.file) {
         formData.append('documentPhoto2', documents.photo2.file);
-        console.log('[SUBMIT] Added documentPhoto2:', documents.photo2.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto2:', documents.photo2.file.name, `(${(documents.photo2.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing documentPhoto2');
       }
+
       if (documents.photo3?.file) {
         formData.append('documentPhoto3', documents.photo3.file);
-        console.log('[SUBMIT] Added documentPhoto3:', documents.photo3.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto3:', documents.photo3.file.name, `(${(documents.photo3.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing documentPhoto3');
       }
+
       if (documents.photo4?.file) {
         formData.append('documentPhoto4', documents.photo4.file);
-        console.log('[SUBMIT] Added documentPhoto4:', documents.photo4.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto4:', documents.photo4.file.name, `(${(documents.photo4.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing documentPhoto4');
       }
+
+      // photo5 é OPCIONAL
       if (documents.photo5?.file) {
         formData.append('documentPhoto5', documents.photo5.file);
-        console.log('[SUBMIT] Added documentPhoto5:', documents.photo5.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto5 (opcional):', documents.photo5.file.name, `(${(documents.photo5.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.log('[SUBMIT] ℹ️ No documentPhoto5 (opcional - OK)');
       }
+
+      // photo6 é OPCIONAL
       if (documents.photo6?.file) {
         formData.append('documentPhoto6', documents.photo6.file);
-        console.log('[SUBMIT] Added documentPhoto6:', documents.photo6.file.name);
+        console.log('[SUBMIT] ✅ Added documentPhoto6 (opcional):', documents.photo6.file.name, `(${(documents.photo6.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.log('[SUBMIT] ℹ️ No documentPhoto6 (opcional - OK)');
       }
+
+      // video1 é OBRIGATÓRIO
       if (documents.video1?.file) {
         formData.append('documentVideo1', documents.video1.file);
-        console.log('[SUBMIT] Added documentVideo1:', documents.video1.file.name);
+        console.log('[SUBMIT] ✅ Added documentVideo1:', documents.video1.file.name, `(${(documents.video1.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.error('[SUBMIT] ❌ Missing documentVideo1');
       }
+
+      // video2 é OPCIONAL
       if (documents.video2?.file) {
         formData.append('documentVideo2', documents.video2.file);
-        console.log('[SUBMIT] Added documentVideo2:', documents.video2.file.name);
+        console.log('[SUBMIT] ✅ Added documentVideo2 (opcional):', documents.video2.file.name, `(${(documents.video2.file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else {
+        console.log('[SUBMIT] ℹ️ No documentVideo2 (opcional - OK)');
       }
 
       console.log('[SUBMIT] FormData prepared, sending to server...');
+      console.log('[SUBMIT] Total files in FormData:', Array.from(formData.entries()).filter(([key]) => key.includes('Photo') || key.includes('Video')).length);
 
       // Get token for authentication
       const session = await supabase.auth.getSession();
@@ -753,12 +958,12 @@ export default function ClientPortalFirstAccess() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="occupation">
-                    Profissão <span className="text-red-500">*</span>
+                    Profissão/Ocupação <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="occupation"
                     {...register('occupation', { required: 'Profissão é obrigatória' })}
-                    placeholder="Ex: Engenheiro, Professor, Autônomo"
+                    placeholder="Ex: Comerciante, Autônomo, CLT"
                     className={errors.occupation ? 'border-red-500' : ''}
                   />
                   {errors.occupation && (
@@ -773,7 +978,7 @@ export default function ClientPortalFirstAccess() {
                   <Input
                     id="company"
                     {...register('company', { required: 'Empresa é obrigatória' })}
-                    placeholder="Nome da empresa onde trabalha"
+                    placeholder="Nome da empresa ou 'Autônomo'"
                     className={errors.company ? 'border-red-500' : ''}
                   />
                   {errors.company && (
@@ -793,11 +998,14 @@ export default function ClientPortalFirstAccess() {
                       id="monthlyIncome"
                       {...register('monthlyIncome', { required: 'Renda mensal é obrigatória' })}
                       placeholder="0,00"
-                      className={`pl-10 ${errors.monthlyIncome ? 'border-red-500' : ''}`}
                       onChange={(e) => {
                         const formatted = formatCurrency(e.target.value);
                         setValue('monthlyIncome', formatted);
                       }}
+                      className={cn(
+                        'pl-10',
+                        errors.monthlyIncome ? 'border-red-500' : ''
+                      )}
                     />
                   </div>
                   {errors.monthlyIncome && (
@@ -816,14 +1024,24 @@ export default function ClientPortalFirstAccess() {
                 Documentos
               </CardTitle>
               <CardDescription>
-                Faça o upload dos documentos solicitados
+                Faça o upload dos documentos solicitados (imagens: máx 5MB, vídeos: máx 10MB)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Alert className="border-blue-200 bg-blue-50">
+                <FileText className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-900 text-sm">
+                  📸 <strong>4 fotos obrigatórias</strong> + 2 fotos opcionais de documentos (RG, CNH, comprovantes, etc.)<br />
+                  🎥 <strong>1 vídeo obrigatório</strong> + 1 vídeo opcional de identificação<br />
+                  <span className="text-red-600 font-semibold">⚠️ Limites: Imagens até 5MB, Vídeos até 10MB</span>
+                </AlertDescription>
+              </Alert>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Foto 1 - Obrigatória */}
                 <div>
                   <Label htmlFor="photo1">
-                    Documento de Identificação (Frente) <span className="text-red-500">*</span>
+                    Foto do Documento 1 <span className="text-red-500">*</span>
                   </Label>
                   <FileUploadPreview
                     id="photo1"
@@ -835,9 +1053,10 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
+                {/* Foto 2 - Obrigatória */}
                 <div>
                   <Label htmlFor="photo2">
-                    Documento de Identificação (Verso) <span className="text-red-500">*</span>
+                    Foto do Documento 2 <span className="text-red-500">*</span>
                   </Label>
                   <FileUploadPreview
                     id="photo2"
@@ -849,9 +1068,10 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
+                {/* Foto 3 - Obrigatória */}
                 <div>
                   <Label htmlFor="photo3">
-                    Selfie com Documento de Identificação <span className="text-red-500">*</span>
+                    Foto do Documento 3 <span className="text-red-500">*</span>
                   </Label>
                   <FileUploadPreview
                     id="photo3"
@@ -863,23 +1083,10 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="video1">
-                    Vídeo de Identificação <span className="text-red-500">*</span>
-                  </Label>
-                  <FileUploadPreview
-                    id="video1"
-                    type="video"
-                    onUpload={(file, preview) => setDocuments({ ...documents, video1: { file, preview, type: 'video' } })}
-                    onRemove={() => setDocuments({ ...documents, video1: null })}
-                    file={documents.video1?.file}
-                    preview={documents.video1?.preview}
-                  />
-                </div>
-
+                {/* Foto 4 - Obrigatória */}
                 <div>
                   <Label htmlFor="photo4">
-                    Comprovante de Residência <span className="text-red-500">*</span>
+                    Foto do Documento 4 <span className="text-red-500">*</span>
                   </Label>
                   <FileUploadPreview
                     id="photo4"
@@ -891,9 +1098,10 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
+                {/* Foto 5 - Opcional */}
                 <div>
                   <Label htmlFor="photo5">
-                    Comprovante de Renda <span className="text-red-500">*</span>
+                    Foto do Documento 5 <span className="text-gray-500 text-xs">(Opcional)</span>
                   </Label>
                   <FileUploadPreview
                     id="photo5"
@@ -905,9 +1113,10 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
+                {/* Foto 6 - Opcional */}
                 <div>
                   <Label htmlFor="photo6">
-                    Foto Adicional (Opcional: CNH, RG profissional, etc) <span className="text-red-500">*</span>
+                    Foto do Documento 6 <span className="text-gray-500 text-xs">(Opcional)</span>
                   </Label>
                   <FileUploadPreview
                     id="photo6"
@@ -919,9 +1128,25 @@ export default function ClientPortalFirstAccess() {
                   />
                 </div>
 
+                {/* Vídeo 1 - Obrigatório */}
+                <div>
+                  <Label htmlFor="video1">
+                    Vídeo de Identificação 1 <span className="text-red-500">*</span>
+                  </Label>
+                  <FileUploadPreview
+                    id="video1"
+                    type="video"
+                    onUpload={(file, preview) => setDocuments({ ...documents, video1: { file, preview, type: 'video' } })}
+                    onRemove={() => setDocuments({ ...documents, video1: null })}
+                    file={documents.video1?.file}
+                    preview={documents.video1?.preview}
+                  />
+                </div>
+
+                {/* Vídeo 2 - Opcional */}
                 <div>
                   <Label htmlFor="video2">
-                    Vídeo Apresentação Pessoal <span className="text-red-500">*</span>
+                    Vídeo de Identificação 2 <span className="text-gray-500 text-xs">(Opcional)</span>
                   </Label>
                   <FileUploadPreview
                     id="video2"
@@ -934,11 +1159,73 @@ export default function ClientPortalFirstAccess() {
                 </div>
               </div>
               
+              {/* Upload Progress Indicator */}
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">Documentos Obrigatórios:</span>
+                  <span className={`font-semibold ${allDocumentsUploaded ? 'text-green-600' : 'text-orange-600'}`}>
+                    {[profilePhoto, documents.photo1, documents.photo2, documents.photo3, documents.photo4, documents.video1].filter(d => d !== null).length}/6
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  <div className={`flex items-center gap-1 ${profilePhoto ? 'text-green-600' : 'text-gray-400'}`}>
+                    {profilePhoto ? '✅' : '⬜'} Foto de Perfil
+                  </div>
+                  <div className={`flex items-center gap-1 ${documents.photo1 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {documents.photo1 ? '✅' : '⬜'} Documento 1
+                  </div>
+                  <div className={`flex items-center gap-1 ${documents.photo2 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {documents.photo2 ? '✅' : '⬜'} Documento 2
+                  </div>
+                  <div className={`flex items-center gap-1 ${documents.photo3 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {documents.photo3 ? '✅' : '⬜'} Documento 3
+                  </div>
+                  <div className={`flex items-center gap-1 ${documents.photo4 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {documents.photo4 ? '✅' : '⬜'} Documento 4
+                  </div>
+                  <div className={`flex items-center gap-1 ${documents.video1 ? 'text-green-600' : 'text-gray-400'}`}>
+                    {documents.video1 ? '✅' : '⬜'} Vídeo 1
+                  </div>
+                </div>
+
+                {(documents.photo5 || documents.photo6 || documents.video2) && (
+                  <>
+                    <div className="flex items-center justify-between text-sm mt-3">
+                      <span className="font-medium text-gray-600">Documentos Opcionais:</span>
+                      <span className="font-semibold text-blue-600">
+                        {[documents.photo5, documents.photo6, documents.video2].filter(d => d !== null).length}/3
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className={`flex items-center gap-1 ${documents.photo5 ? 'text-blue-600' : 'text-gray-300'}`}>
+                        {documents.photo5 ? '✅' : '⬜'} Documento 5
+                      </div>
+                      <div className={`flex items-center gap-1 ${documents.photo6 ? 'text-blue-600' : 'text-gray-300'}`}>
+                        {documents.photo6 ? '✅' : '⬜'} Documento 6
+                      </div>
+                      <div className={`flex items-center gap-1 ${documents.video2 ? 'text-blue-600' : 'text-gray-300'}`}>
+                        {documents.video2 ? '✅' : '⬜'} Vídeo 2
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {allDocumentsUploaded && (
+                <Alert className="border-green-200 bg-green-50 mt-4">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-900 text-sm">
+                    ✅ Todos os documentos obrigatórios foram enviados! Você pode prosseguir com o cadastro.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {!allDocumentsUploaded && (
-                <Alert className="border-amber-200 bg-amber-50">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-900 text-sm">
-                    ⚠️ Você precisa fazer o upload de todos os 8 documentos para completar o cadastro
+                <Alert className="border-orange-200 bg-orange-50 mt-4">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-900 text-sm">
+                    ⚠️ Envie todos os 6 documentos obrigatórios para continuar.
                   </AlertDescription>
                 </Alert>
               )}
@@ -981,8 +1268,12 @@ export default function ClientPortalFirstAccess() {
               <div className="flex items-start gap-3 p-4 bg-white rounded border">
                 <Checkbox
                   id="lgpdConsent"
-                  checked={lgpdConsent}
-                  onCheckedChange={(checked) => setValue('lgpdConsent', checked as boolean)}
+                  checked={lgpdConsent === true}
+                  onCheckedChange={(checked) => {
+                    // Ensure we set a boolean value, not 'indeterminate'
+                    const boolValue = checked === true;
+                    setValue('lgpdConsent', boolValue, { shouldValidate: true });
+                  }}
                   className="mt-1"
                 />
                 <label
@@ -998,29 +1289,48 @@ export default function ClientPortalFirstAccess() {
                   ⚠️ Você precisa aceitar os termos da LGPD para completar o cadastro
                 </p>
               )}
+              {errors.lgpdConsent && (
+                <p className="text-sm text-red-500 mt-1">{errors.lgpdConsent.message}</p>
+              )}
             </CardContent>
           </Card>
 
           {/* Submit Button */}
-          <div className="flex justify-end gap-4">
-            <Button
-              type="submit"
-              disabled={loading || !lgpdConsent || !allDocumentsUploaded}
-              size="lg"
-              className="gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Shield className="h-5 w-5" />
-                  Completar Cadastro
-                </>
-              )}
-            </Button>
+          <div className="space-y-3">
+            {(!lgpdConsent || !allDocumentsUploaded) && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-900 text-sm">
+                  <strong>Não é possível salvar ainda:</strong>
+                  <ul className="mt-2 ml-4 list-disc space-y-1">
+                    {!allDocumentsUploaded && <li>Envie todos os 6 documentos obrigatórios</li>}
+                    {!lgpdConsent && <li>Aceite os termos da LGPD</li>}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-4">
+              <Button
+                type="button"
+                onClick={handleSubmitClick}
+                disabled={loading || !lgpdConsent || !allDocumentsUploaded}
+                size="lg"
+                className="gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-5 w-5" />
+                    Completar Cadastro
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           <Alert className="border-amber-200 bg-amber-50">
@@ -1030,6 +1340,66 @@ export default function ClientPortalFirstAccess() {
             </AlertDescription>
           </Alert>
         </form>
+
+        {/* Error Overlay */}
+        {showErrorOverlay && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 animate-in zoom-in-95 duration-200">
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                      <AlertCircle className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Cadastro Incompleto
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Complete os requisitos abaixo
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowErrorOverlay(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Error Messages */}
+                <div className="space-y-3 mb-6">
+                  {errorMessages.map((error, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg"
+                    >
+                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-900 flex-1">{error}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowErrorOverlay(false)}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    Entendi, vou completar
+                  </Button>
+                </div>
+
+                {/* Helper Text */}
+                <p className="text-xs text-center text-gray-500 mt-4">
+                  Role a página para cima e complete os itens marcados em vermelho
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

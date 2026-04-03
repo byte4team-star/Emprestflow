@@ -1,160 +1,446 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
-import { Plus, FileText, AlertCircle, ArrowLeft, Calendar } from 'lucide-react';
+import { useNavigate, useSearchParams, useParams, Link } from 'react-router';
+import { useForm } from 'react-hook-form';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { apiCall } from '../lib/supabase';
-import { formatDateBR } from '../lib/date-utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import AppHeader from '../components/AppHeader';
+import { toast } from 'sonner';
+import { ArrowLeft, Save, Home, AlertCircle, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 
-export default function Contracts() {
-  const [contracts, setContracts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ContractFormData {
+  clientId: string;
+  totalAmount: number;
+  installments: number;
+  installmentPeriod: 'daily' | 'weekly' | 'monthly';
+  firstDueDate: string;
+  interestRate: number;
+  lateFeeRate: number;
+  description: string;
+}
+
+export default function ContractForm() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const preselectedClientId = searchParams.get('clientId');
+  const isEditMode = !!id;
+
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ContractFormData>({
+    defaultValues: {
+      lateFeeRate: 10,
+      clientId: preselectedClientId || '',
+      installmentPeriod: 'monthly',
+    },
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(isEditMode);
+  const [clients, setClients] = useState<any[]>([]);
+  const [contract, setContract] = useState<any>(null);
+  const [selectedClientId, setSelectedClientId] = useState(preselectedClientId || '');
+  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    loadContracts();
-  }, []);
+    loadClients();
+    if (isEditMode) {
+      loadContract();
+    } else if (preselectedClientId) {
+      setValue('clientId', preselectedClientId);
+      setSelectedClientId(preselectedClientId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  const loadContracts = async () => {
+  const loadContract = async () => {
+    if (!id) return;
+    
     try {
-      const data = await apiCall('/contracts');
-      setContracts(data.contracts);
+      const data = await apiCall(`/contracts/${id}`);
+      const contractData = data.contract;
+      setContract(contractData);
+      
+      // Preencher formulário com dados do contrato
+      setValue('clientId', contractData.clientId);
+      setValue('totalAmount', contractData.totalAmount);
+      setValue('installments', contractData.installments);
+      setValue('installmentPeriod', contractData.installmentPeriod || 'monthly');
+      setValue('firstDueDate', contractData.firstDueDate.split('T')[0]);
+      setValue('interestRate', contractData.interestRate);
+      setValue('lateFeeRate', contractData.lateFeeRate);
+      setValue('description', contractData.description || '');
+      setSelectedClientId(contractData.clientId);
+      setSelectedPeriod(contractData.installmentPeriod || 'monthly');
     } catch (error) {
-      console.error('Error loading contracts:', error);
+      console.error('Error loading contract:', error);
+      toast.error('Erro ao carregar contrato');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const data = await apiCall('/clients');
+      setClients(data.clients);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
+
+  const onSubmit = async (data: ContractFormData) => {
+    setLoading(true);
+
+    try {
+      // Preparar dados com conversões corretas
+      const contractData = {
+        clientId: data.clientId,
+        totalAmount: parseFloat(String(data.totalAmount)),
+        installments: parseInt(String(data.installments)),
+        installmentPeriod: data.installmentPeriod,
+        firstDueDate: data.firstDueDate, // Data no formato YYYY-MM-DD
+        interestRate: parseFloat(String(data.interestRate || 0)),
+        lateFeeRate: parseFloat(String(data.lateFeeRate || 0)),
+        description: data.description || '',
+      };
+
+      console.log('Dados sendo enviados:', contractData);
+
+      if (isEditMode) {
+        // Atualizar contrato existente
+        await apiCall(`/contracts/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(contractData),
+        });
+        toast.success('Contrato atualizado com sucesso!');
+        navigate(`/contracts/${id}`);
+      } else {
+        // Criar novo contrato
+        const response = await apiCall('/contracts', {
+          method: 'POST',
+          body: JSON.stringify(contractData),
+        });
+        toast.success('Contrato criado com sucesso!');
+        navigate(`/contracts/${response.contract.id}`);
+      }
+    } catch (error: any) {
+      console.error('Error saving contract:', error);
+      toast.error(error.message || `Erro ao ${isEditMode ? 'atualizar' : 'criar'} contrato`);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
+  const deleteContract = async () => {
+    setDeleting(true);
+
+    try {
+      await apiCall(`/contracts/${id}`, {
+        method: 'DELETE',
+      });
+      toast.success('Contrato excluído com sucesso!');
+      navigate('/contracts');
+    } catch (error: any) {
+      console.error('Error deleting contract:', error);
+      toast.error(error.message || 'Erro ao excluir contrato');
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+    }
   };
 
+  // Função para calcular taxa de juros baseada no valor da parcela
+  const calculateInterestFromInstallment = (installmentValue?: number) => {
+    const totalAmount = parseFloat(watch('totalAmount') || '0');
+    const installments = parseInt(watch('installments') || '0');
+    
+    if (!totalAmount || !installments || installments === 0) return;
+
+    if (installmentValue && installmentValue > 0) {
+      // Calcular taxa de juros baseada no valor da parcela desejado
+      const totalToPay = installmentValue * installments;
+      const interestAmount = totalToPay - totalAmount;
+      const interestRate = (interestAmount / totalAmount) * 100;
+      
+      // Permite taxa negativa (quando parcela é menor que o valor sem juros)
+      setValue('interestRate', parseFloat(interestRate.toFixed(2)));
+    }
+  };
+
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-full">
-      <AppHeader />
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Contratos</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1">Gerencie os contratos e parcelas</p>
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <Link to="/contracts" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar para Contratos
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link to="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm">
+            <Home className="h-4 w-4" />
+            Dashboard
+          </Link>
         </div>
-        <Link to="/contracts/new">
-          <Button className="gap-2 text-sm bg-emerald-700 hover:bg-emerald-800">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo Contrato</span>
-          </Button>
-        </Link>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          {isEditMode ? 'Editar Contrato' : 'Novo Contrato'}
+        </h1>
+        <p className="text-sm md:text-base text-gray-600 mt-1">
+          {isEditMode ? 'Atualize as informações do contrato' : 'Crie um novo contrato de cobrança'}
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="text-sm text-gray-600">{contracts.length} contrato(s)</div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Carregando contratos...</p>
+      {isEditMode && contract?.installmentsList?.some((i: any) => i.status === 'paid') && (
+        <Alert className="bg-yellow-50 border-yellow-200">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Atenção:</strong> Este contrato possui parcelas pagas. Alterações em valores e parcelas 
+            não afetarão parcelas já pagas, apenas as pendentes.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações do Contrato</CardTitle>
+            <CardDescription>Preencha os dados do contrato</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="clientId">Cliente *</Label>
+              <Select
+                value={selectedClientId || undefined}
+                onValueChange={(value) => {
+                  setValue('clientId', value);
+                  setSelectedClientId(value);
+                }}
+                disabled={isEditMode}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.fullName} - {client.cpfCnpj}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isEditMode && (
+                <p className="text-xs text-gray-500">O cliente não pode ser alterado após criação</p>
+              )}
+              {errors.clientId && (
+                <p className="text-sm text-red-600">{errors.clientId.message}</p>
+              )}
             </div>
-          ) : contracts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Nenhum contrato encontrado</p>
-              <Link to="/contracts/new">
-                <Button className="mt-4 gap-2">
-                  <Plus className="h-4 w-4" />
-                  Criar Primeiro Contrato
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <>
-              {/* Mobile view - Cards */}
-              <div className="block md:hidden space-y-4">
-                {contracts.map((contract) => (
-                  <Link key={contract.id} to={`/contracts/${contract.id}`}>
-                    <Card className="hover:shadow-md transition-shadow">
-                      <CardContent className="pt-6">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-blue-600 truncate">
-                                {contract.client?.fullName || 'Cliente não encontrado'}
-                              </h3>
-                              <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
-                                <FileText className="h-3 w-3" />
-                                <span className="font-medium">{formatCurrency(contract.totalAmount)}</span>
-                              </div>
-                            </div>
-                            <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
-                              {contract.status === 'active' ? 'Ativo' : 'Inativo'}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-3 w-3" />
-                              <span>
-                                {contract.installments}x de {formatCurrency(contract.installmentAmount)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-3 w-3" />
-                              <span>1º venc: {formatDateBR(contract.firstDueDate)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="totalAmount">Valor Total *</Label>
+                <Input
+                  id="totalAmount"
+                  type="number"
+                  step="0.01"
+                  {...register('totalAmount', {
+                    required: 'Campo obrigatório',
+                    min: { value: 0, message: 'Valor deve ser positivo' },
+                  })}
+                    onChange={(e) => {
+                    register('totalAmount').onChange(e);
+                    calculateInterestFromInstallment();
+                  }}
+                />
+                {errors.totalAmount && (
+                  <p className="text-sm text-red-600">{errors.totalAmount.message}</p>
+                )}
               </div>
 
-              {/* Desktop view - Table */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor Total</TableHead>
-                      <TableHead>Parcelas</TableHead>
-                      <TableHead>Primeiro Vencimento</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contracts.map((contract) => (
-                      <TableRow key={contract.id}>
-                        <TableCell className="font-medium">
-                          <Link 
-                            to={`/contracts/${contract.id}`}
-                            className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                          >
-                            {contract.client?.fullName || 'Cliente não encontrado'}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{formatCurrency(contract.totalAmount)}</TableCell>
-                        <TableCell>
-                          {contract.installments}x de {formatCurrency(contract.installmentAmount)}
-                        </TableCell>
-                        <TableCell>{formatDateBR(contract.firstDueDate)}</TableCell>
-                        <TableCell>
-                          <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
-                            {contract.status === 'active' ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="space-y-2">
+                <Label htmlFor="installments">Número de Parcelas *</Label>
+                <Input
+                  id="installments"
+                  type="number"
+                  {...register('installments', {
+                    required: 'Campo obrigatório',
+                    min: { value: 1, message: 'Mínimo 1 parcela' },
+                  })}
+                    onChange={(e) => {
+                    register('installments').onChange(e);
+                    calculateInterestFromInstallment();
+                  }}
+                />
+                {errors.installments && (
+                  <p className="text-sm text-red-600">{errors.installments.message}</p>
+                )}
               </div>
-            </>
+
+              <div className="space-y-2">
+                <Label htmlFor="installmentPeriod">Periodicidade das Parcelas *</Label>
+                <Select
+                  value={selectedPeriod}
+                  onValueChange={(value) => {
+                    setValue('installmentPeriod', value as 'daily' | 'weekly' | 'monthly');
+                    setSelectedPeriod(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a periodicidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Diária</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Define o intervalo entre os vencimentos das parcelas
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="installmentValue" className="flex items-center gap-2">
+                  Valor da Parcela Desejado
+                  <span className="text-xs text-gray-500">(Opcional)</span>
+                </Label>
+                <Input
+                  id="installmentValue"
+                  type="number"
+                  step="0.01"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      calculateInterestFromInstallment(parseFloat(value));
+                    }
+                  }}
+                />
+                <p className="text-xs text-blue-600">
+                  💡 Digite o valor desejado da parcela e a taxa de juros será calculada automaticamente
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="firstDueDate">Primeiro Vencimento *</Label>
+                <Input
+                  id="firstDueDate"
+                  type="date"
+                  {...register('firstDueDate', { required: 'Campo obrigatório' })}
+                />
+                {errors.firstDueDate && (
+                  <p className="text-sm text-red-600">{errors.firstDueDate.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="interestRate">Taxa de Juros (% ao mês)</Label>
+                <Input
+                  id="interestRate"
+                  type="number"
+                  step="0.01"
+                  {...register('interestRate')}                  
+                />
+                <p className="text-xs text-gray-500">
+                  Será calculada automaticamente se você informar o valor da parcela
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lateFeeRate">Multa por Atraso (%)</Label>
+                <Input
+                  id="lateFeeRate"
+                  type="number"
+                  step="0.01"
+                  {...register('lateFeeRate')}                  
+               />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                {...register('description')}
+                placeholder="Detalhes do contrato..."
+                rows={3}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+          <div className="flex gap-4">
+            <Button type="submit" disabled={loading} className="gap-2">
+              <Save className="h-4 w-4" />
+              {loading ? 'Salvando...' : (isEditMode ? 'Atualizar Contrato' : 'Criar Contrato')}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              Cancelar
+            </Button>
+          </div>
+          {isEditMode && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowDeleteDialog(true)}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Excluir Contrato</span>
+              <span className="sm:hidden">Excluir</span>
+            </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </form>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Contrato</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este contrato? Esta ação não pode ser desfeita.
+              {contract?.installmentsList?.some((i: any) => i.status === 'paid') && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  ⚠️ Este contrato possui parcelas pagas e não pode ser excluído.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteContract}
+              disabled={deleting || contract?.installmentsList?.some((i: any) => i.status === 'paid')}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

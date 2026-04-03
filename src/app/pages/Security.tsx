@@ -4,24 +4,55 @@ import { apiCall } from '../lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
-import { 
-  Shield, 
-  Lock, 
-  Key, 
-  FileCheck, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
+import { Button } from '../components/ui/button';
+import {
+  Shield,
+  Lock,
+  Key,
+  FileCheck,
   AlertTriangle,
   CheckCircle,
   Users,
   Database,
   Eye,
-  Activity
+  Activity,
+  Mail,
+  Calendar,
+  UserCheck,
+  UserX,
+  MoreVertical,
+  Trash2,
+  KeyRound
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SecurityMetrics {
   totalUsers: number;
   activeUsers: number;
   adminUsers: number;
-  operatorUsers: number;
   clientUsers: number;
   totalAuditLogs: number;
   recentLogs: AuditLog[];
@@ -36,6 +67,15 @@ interface AuditLog {
   metadata?: any;
 }
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'client';
+  createdAt: string;
+  lastLogin?: string;
+}
+
 export default function Security() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -43,11 +83,25 @@ export default function Security() {
     totalUsers: 0,
     activeUsers: 0,
     adminUsers: 0,
-    operatorUsers: 0,
     clientUsers: 0,
     totalAuditLogs: 0,
     recentLogs: [],
   });
+
+  // User modal states
+  const [usersModalOpen, setUsersModalOpen] = useState(false);
+  const [usersModalType, setUsersModalType] = useState<'all' | 'active' | 'admin' | 'client'>('all');
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  // Delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Reset password confirmation dialog
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -60,21 +114,171 @@ export default function Security() {
   const loadSecurityMetrics = async () => {
     try {
       setLoading(true);
-      // Aqui você pode adicionar endpoint para buscar métricas de segurança
-      // Por enquanto, dados simulados
-      setMetrics({
-        totalUsers: 5,
-        activeUsers: 5,
-        adminUsers: 1,
-        operatorUsers: 2,
-        clientUsers: 2,
-        totalAuditLogs: 150,
-        recentLogs: [],
-      });
+
+      // Fetch users from backend
+      try {
+        const data = await apiCall('/users');
+        const users = data.users || [];
+        setAllUsers(users);
+
+        // Calculate metrics from real data
+        setMetrics({
+          totalUsers: users.length,
+          activeUsers: users.length, // Todos os usuários registrados são considerados ativos
+          adminUsers: users.filter((u: User) => u.role === 'admin').length,
+          clientUsers: users.filter((u: User) => u.role === 'client').length,
+          totalAuditLogs: 150, // Este valor pode vir de outro endpoint no futuro
+          recentLogs: [],
+        });
+      } catch (error: any) {
+        console.error('Error loading users:', error);
+        // Use default values if backend fails
+        setMetrics({
+          totalUsers: 0,
+          activeUsers: 0,
+          adminUsers: 0,
+          clientUsers: 0,
+          totalAuditLogs: 0,
+          recentLogs: [],
+        });
+
+        // Show detailed error with instructions
+        toast.error(
+          <div>
+            <p className="font-semibold">❌ Erro ao carregar dados de usuários</p>
+            <p className="text-xs mt-1">{error.message || 'Erro desconhecido'}</p>
+            <p className="text-xs mt-2 font-semibold">🔧 Solução:</p>
+            <p className="text-xs">1. Faça o deploy da Edge Function atualizada</p>
+            <p className="text-xs">2. Execute: supabase functions deploy server</p>
+          </div>,
+          { duration: 10000 }
+        );
+      }
     } catch (error) {
       console.error('Error loading security metrics:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCardClick = (type: 'all' | 'active' | 'admin' | 'client') => {
+    setUsersModalType(type);
+    setUsersModalOpen(true);
+  };
+
+  const getFilteredUsers = () => {
+    switch (usersModalType) {
+      case 'all':
+        return allUsers;
+      case 'active':
+        return allUsers; // Todos são ativos
+      case 'admin':
+        return allUsers.filter(u => u.role === 'admin');
+      case 'client':
+        return allUsers.filter(u => u.role === 'client');
+      default:
+        return allUsers;
+    }
+  };
+
+  const getModalTitle = () => {
+    switch (usersModalType) {
+      case 'all':
+        return 'Todos os Usuários';
+      case 'active':
+        return 'Usuários Ativos';
+      case 'admin':
+        return 'Administradores';
+      case 'client':
+        return 'Clientes';
+      default:
+        return 'Usuários';
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Badge className="bg-red-600 text-white"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
+      case 'client':
+        return <Badge className="bg-green-600 text-white"><Users className="h-3 w-3 mr-1" />Cliente</Badge>;
+      default:
+        return <Badge variant="outline">{role}</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+
+    // Não permitir deletar a si mesmo
+    if (userToDelete.id === user?.id) {
+      toast.error('Você não pode deletar seu próprio usuário');
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await apiCall(`/users/${userToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      toast.success('Usuário excluído com sucesso');
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+
+      // Recarregar dados
+      await loadSecurityMetrics();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Erro ao excluir usuário');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleResetPasswordClick = (user: User) => {
+    setUserToReset(user);
+    setResetPasswordDialogOpen(true);
+  };
+
+  const handleResetPasswordConfirm = async () => {
+    if (!userToReset) return;
+
+    try {
+      setResetting(true);
+      const result = await apiCall(`/users/${userToReset.id}/reset-password`, {
+        method: 'POST',
+      });
+
+      toast.success(
+        <div>
+          <p className="font-semibold">✅ Senha resetada com sucesso!</p>
+          <p className="text-sm mt-1">Nova senha: <strong>{result.newPassword}</strong></p>
+          <p className="text-xs text-gray-500 mt-1">⚠️ Anote esta senha e envie ao usuário</p>
+        </div>,
+        { duration: 10000 }
+      );
+
+      setResetPasswordDialogOpen(false);
+      setUserToReset(null);
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast.error(error.message || 'Erro ao resetar senha');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -196,24 +400,32 @@ export default function Security() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div
+              onClick={() => handleCardClick('all')}
+              className="text-center p-4 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors hover:shadow-md"
+            >
               <p className="text-3xl font-bold text-blue-900">{metrics.totalUsers}</p>
               <p className="text-sm text-blue-700 mt-1">Total de Usuários</p>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div
+              onClick={() => handleCardClick('active')}
+              className="text-center p-4 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors hover:shadow-md"
+            >
               <p className="text-3xl font-bold text-green-900">{metrics.activeUsers}</p>
               <p className="text-sm text-green-700 mt-1">Usuários Ativos</p>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div
+              onClick={() => handleCardClick('admin')}
+              className="text-center p-4 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors hover:shadow-md"
+            >
               <p className="text-3xl font-bold text-purple-900">{metrics.adminUsers}</p>
               <p className="text-sm text-purple-700 mt-1">Administradores</p>
             </div>
-            <div className="text-center p-4 bg-amber-50 rounded-lg">
-              <p className="text-3xl font-bold text-amber-900">{metrics.operatorUsers}</p>
-              <p className="text-sm text-amber-700 mt-1">Operadores</p>
-            </div>
-            <div className="text-center p-4 bg-cyan-50 rounded-lg">
+            <div
+              onClick={() => handleCardClick('client')}
+              className="text-center p-4 bg-cyan-50 rounded-lg cursor-pointer hover:bg-cyan-100 transition-colors hover:shadow-md"
+            >
               <p className="text-3xl font-bold text-cyan-900">{metrics.clientUsers}</p>
               <p className="text-sm text-cyan-700 mt-1">Clientes</p>
             </div>
@@ -249,7 +461,7 @@ export default function Security() {
               <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-gray-900">RBAC - Controle por Papéis</p>
-                <p className="text-sm text-gray-600">Admin, Operator e Client com permissões específicas</p>
+                <p className="text-sm text-gray-600">Admin e Client com permissões específicas</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -377,7 +589,7 @@ export default function Security() {
                   <td className="px-4 py-3">
                     <Badge className="bg-green-100 text-green-700">✓ requireAuth</Badge>
                   </td>
-                  <td className="px-4 py-3">admin/operator</td>
+                  <td className="px-4 py-3">admin</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-mono text-xs">/contracts</td>
@@ -387,7 +599,7 @@ export default function Security() {
                   <td className="px-4 py-3">
                     <Badge className="bg-green-100 text-green-700">✓ requireAuth</Badge>
                   </td>
-                  <td className="px-4 py-3">admin/operator</td>
+                  <td className="px-4 py-3">admin</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-mono text-xs">/payments</td>
@@ -397,7 +609,7 @@ export default function Security() {
                   <td className="px-4 py-3">
                     <Badge className="bg-green-100 text-green-700">✓ requireAuth</Badge>
                   </td>
-                  <td className="px-4 py-3">admin/operator</td>
+                  <td className="px-4 py-3">admin</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-mono text-xs">/billing/*</td>
@@ -407,7 +619,7 @@ export default function Security() {
                   <td className="px-4 py-3">
                     <Badge className="bg-green-100 text-green-700">✓ requireAuth</Badge>
                   </td>
-                  <td className="px-4 py-3">admin/operator</td>
+                  <td className="px-4 py-3">admin</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-mono text-xs">/admin/*</td>
@@ -453,6 +665,160 @@ export default function Security() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Users Modal */}
+      <Dialog open={usersModalOpen} onOpenChange={setUsersModalOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-600" />
+              {getModalTitle()}
+            </DialogTitle>
+            <DialogDescription>
+              {getFilteredUsers().length} {getFilteredUsers().length === 1 ? 'usuário encontrado' : 'usuários encontrados'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {getFilteredUsers().length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <UserX className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                <p>Nenhum usuário encontrado</p>
+              </div>
+            ) : (
+              getFilteredUsers().map((userItem) => (
+                <div
+                  key={userItem.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                        {userItem.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-900">{userItem.name}</p>
+                          {getRoleBadge(userItem.role)}
+                          {userItem.id === user?.id && (
+                            <Badge variant="outline" className="text-xs">Você</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                          <Mail className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{userItem.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span>Cadastrado em {formatDate(userItem.createdAt)}</span>
+                        </div>
+                        {userItem.lastLogin && (
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                            <Activity className="h-3 w-3 flex-shrink-0" />
+                            <span>Último acesso em {formatDate(userItem.lastLogin)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleResetPasswordClick(userItem)}
+                          className="cursor-pointer"
+                        >
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Resetar Senha
+                        </DropdownMenuItem>
+                        {userItem.id !== user?.id && (
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(userItem)}
+                            className="cursor-pointer text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir Usuário
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Tem certeza que deseja excluir o usuário <strong>{userToDelete?.name}</strong> ({userToDelete?.email})?
+                </p>
+                <p className="mt-4">
+                  <span className="text-red-600 font-semibold">⚠️ Esta ação não pode ser desfeita!</span>
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Excluindo...' : 'Excluir Usuário'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Password Confirmation Dialog */}
+      <AlertDialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-blue-600" />
+              Resetar Senha
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Deseja resetar a senha do usuário <strong>{userToReset?.name}</strong> ({userToReset?.email})?
+                </p>
+                <p className="mt-4">
+                  Uma nova senha temporária será gerada automaticamente. Você deverá anotar e enviar esta senha ao usuário.
+                </p>
+                <p className="mt-4">
+                  <span className="text-blue-600 font-semibold">ℹ️ A nova senha será exibida apenas uma vez após a confirmação.</span>
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetPasswordConfirm}
+              disabled={resetting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {resetting ? 'Resetando...' : 'Resetar Senha'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

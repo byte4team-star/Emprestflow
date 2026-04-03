@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Users, DollarSign, AlertTriangle, TrendingUp, FileText, RefreshCw, Bell, Clock, XCircle } from 'lucide-react';
@@ -30,6 +30,7 @@ interface MonthlyData {
   month: string;
   paid: number;
   overdue: number;
+  id?: string; // Unique identifier for React keys
 }
 
 interface DueReminder {
@@ -47,6 +48,9 @@ interface DueReminder {
   daysUntilDue: number;
 }
 
+// Counter for generating truly unique IDs
+let idCounter = 0;
+
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
@@ -59,6 +63,30 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
+  // Memoize chart data separately for each chart to prevent key conflicts
+  // MUST be here (before early returns) to follow Rules of Hooks
+  const lineChartData = useMemo(() => {
+    return monthlyData.map((item, index) => ({
+      // Use ONLY month as identifier + create unique internal _id
+      month: `${item.month}`,
+      paid: item.paid,
+      overdue: item.overdue,
+      // Add unique identifier for React key (Recharts uses this internally)
+      key: `line-data-${item.id || index}`,
+    }));
+  }, [monthlyData]);
+
+  const barChartData = useMemo(() => {
+    return monthlyData.map((item, index) => ({
+      // Use ONLY month as identifier + create unique internal _id
+      month: `${item.month}`,
+      paid: item.paid,
+      overdue: item.overdue,
+      // Add unique identifier for React key (Recharts uses this internally)
+      key: `bar-data-${item.id || index}`,
+    }));
+  }, [monthlyData]);
+
   const loadDashboardData = async () => {
     try {
       setError(null);
@@ -66,19 +94,77 @@ export default function Dashboard() {
       setStats(data.stats || null);
       
       // Remove duplicates and ensure unique keys for monthlyData
-      const uniqueMonthlyData = (data.monthlyData || []).reduce((acc: MonthlyData[], item: MonthlyData) => {
-        const exists = acc.find(i => i.month === item.month);
-        if (!exists) {
-          acc.push(item);
-        } else {
-          // If duplicate found, merge the values (sum paid and overdue)
-          exists.paid = (exists.paid || 0) + (item.paid || 0);
-          exists.overdue = (exists.overdue || 0) + (item.overdue || 0);
+      const rawData = data.monthlyData || [];
+
+      // If no data, set empty array
+      if (!rawData || rawData.length === 0) {
+        setMonthlyData([]);
+        setReminders(data.reminders || []);
+        return;
+      }
+
+      // Use Map for O(1) lookups during deduplication - STRICT version
+      const monthMap = new Map<string, { month: string; paid: number; overdue: number }>();
+
+      rawData.forEach((item: MonthlyData) => {
+        const monthKey = item.month;
+
+        // Skip items without valid month - STRICT validation
+        if (!monthKey || typeof monthKey !== 'string' || monthKey.trim() === '') {
+          console.warn('[Dashboard] Skipping item with invalid month:', item);
+          return;
         }
-        return acc;
-      }, []);
-      
-      setMonthlyData(uniqueMonthlyData);
+
+        // Normalize month key to avoid case/whitespace issues
+        const normalizedMonth = monthKey.trim();
+
+        if (monthMap.has(normalizedMonth)) {
+          // Merge with existing entry by summing values
+          const existing = monthMap.get(normalizedMonth)!;
+          existing.paid += (item.paid || 0);
+          existing.overdue += (item.overdue || 0);
+        } else {
+          // Add new entry
+          monthMap.set(normalizedMonth, {
+            month: normalizedMonth,
+            paid: item.paid || 0,
+            overdue: item.overdue || 0,
+          });
+        }
+      });
+
+      // Convert Map to array with guaranteed unique IDs using timestamp + counter
+      const timestamp = Date.now();
+      const uniqueMonthlyData = Array.from(monthMap.entries())
+        .map(([month, data], index) => {
+          idCounter++; // Increment global counter for truly unique IDs
+          return {
+            month: month,
+            paid: data.paid,
+            overdue: data.overdue,
+            id: `month-${timestamp}-${idCounter}-${index}`, // Triple-unique identifier
+          };
+        })
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      // Final verification - ensure NO duplicates using Set
+      const monthSet = new Set<string>();
+      const finalData = uniqueMonthlyData.filter(item => {
+        if (monthSet.has(item.month)) {
+          console.error('[Dashboard] CRITICAL: Duplicate month detected after deduplication:', item.month);
+          return false; // Skip duplicates
+        }
+        monthSet.add(item.month);
+        return true;
+      });
+
+      // Debug logging
+      console.log('[Dashboard] Raw data length:', rawData.length);
+      console.log('[Dashboard] Deduplicated length:', finalData.length);
+      console.log('[Dashboard] Months:', finalData.map(d => d.month));
+      console.log('[Dashboard] IDs:', finalData.map(d => d.id));
+
+      setMonthlyData(finalData);
       setReminders(data.reminders || []);
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -259,105 +345,7 @@ export default function Dashboard() {
 
       {/* Reminders Card - Clients Due for Payment */}
       {reminders && reminders.length > 0 && (
-        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Bell className="h-6 w-6 text-amber-600" />
-                <div>
-                  <CardTitle className="text-lg md:text-xl">🔔 Lembretes de Vencimento</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Clientes com parcelas próximas do vencimento ou atrasadas
-                  </p>
-                </div>
-              </div>
-              <Link to="/reminders">
-                <Badge className="bg-amber-600 hover:bg-amber-700 text-white cursor-pointer">
-                  Ver Todos ({reminders.length})
-                </Badge>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {reminders.slice(0, 5).map((reminder) => {
-                const getStatusBadge = (status: string) => {
-                  switch (status) {
-                    case 'overdue':
-                      return (
-                        <Badge className="bg-red-100 text-red-800 border-red-300">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Atrasado
-                        </Badge>
-                      );
-                    case 'due_today':
-                      return (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-300">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Vence em {reminder.daysUntilDue} dias
-                        </Badge>
-                      );
-                    default:
-                      return (
-                        <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {reminder.daysUntilDue} dias
-                        </Badge>
-                      );
-                  }
-                };
-
-                return (
-                  <div
-                    key={reminder.id}
-                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Link 
-                          to={`/clients/${reminder.clientId}`}
-                          className="font-semibold text-gray-900 hover:text-blue-600 truncate"
-                        >
-                          {reminder.clientName}
-                        </Link>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                        <span>Contrato #{reminder.contractNumber}</span>
-                        <span>•</span>
-                        <span>Parcela {reminder.installmentNumber}/{reminder.totalInstallments}</span>
-                        <span>•</span>
-                        <span>Vencimento: {new Date(reminder.dueDate).toLocaleDateString('pt-BR')}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-emerald-700">
-                          {formatCurrency(reminder.amount)}
-                        </p>
-                        {getStatusBadge(reminder.status)}
-                      </div>
-                      <Link to={`/contracts/${reminder.contractId}`}>
-                        <Badge className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer whitespace-nowrap">
-                          Ver Contrato →
-                        </Badge>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {reminders.length > 5 && (
-              <div className="mt-4 text-center">
-                <Link to="/reminders">
-                  <button className="text-sm text-amber-700 hover:text-amber-800 font-medium hover:underline">
-                    + Ver mais {reminders.length - 5} lembretes
-                  </button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        null
       )}
 
       {/* Charts */}
@@ -368,33 +356,44 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="w-full overflow-x-auto">
-              <ResponsiveContainer width="100%" height={300} minWidth={300}>
-                <LineChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Line 
-                    key="line-paid"
-                    type="monotone" 
-                    dataKey="paid" 
-                    stroke="#10b981" 
-                    name="Pagos"
-                    strokeWidth={2}
-                  />
-                  <Line 
-                    key="line-overdue"
-                    type="monotone" 
-                    dataKey="overdue" 
-                    stroke="#ef4444" 
-                    name="Atrasados"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {lineChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300} minWidth={300}>
+                  <LineChart data={lineChartData} id="line-chart-evolution">
+                    <CartesianGrid strokeDasharray="3 3" key="line-grid" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} key="line-xaxis" />
+                    <YAxis tick={{ fontSize: 12 }} key="line-yaxis" />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      key="line-tooltip"
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} key="line-legend" />
+                    <Line
+                      key="evolution-paid-line"
+                      type="monotone"
+                      dataKey="paid"
+                      stroke="#10b981"
+                      name="Pagos"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      id="line-paid"
+                    />
+                    <Line
+                      key="evolution-overdue-line"
+                      type="monotone"
+                      dataKey="overdue"
+                      stroke="#ef4444"
+                      name="Atrasados"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      id="line-overdue"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -405,19 +404,40 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="w-full overflow-x-auto">
-              <ResponsiveContainer width="100%" height={300} minWidth={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar key="bar-paid" dataKey="paid" fill="#10b981" name="Pagos" />
-                  <Bar key="bar-overdue" dataKey="overdue" fill="#ef4444" name="Atrasados" />
-                </BarChart>
-              </ResponsiveContainer>
+              {barChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300} minWidth={300}>
+                  <BarChart data={barChartData} id="bar-chart-comparison">
+                    <CartesianGrid strokeDasharray="3 3" key="bar-grid" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} key="bar-xaxis" />
+                    <YAxis tick={{ fontSize: 12 }} key="bar-yaxis" />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      key="bar-tooltip"
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} key="bar-legend" />
+                    <Bar 
+                      key="comparison-paid-bar" 
+                      dataKey="paid" 
+                      fill="#10b981" 
+                      name="Pagos" 
+                      isAnimationActive={false}
+                      id="bar-paid"
+                    />
+                    <Bar 
+                      key="comparison-overdue-bar" 
+                      dataKey="overdue" 
+                      fill="#ef4444" 
+                      name="Atrasados" 
+                      isAnimationActive={false}
+                      id="bar-overdue"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  <p>Nenhum dado disponível</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

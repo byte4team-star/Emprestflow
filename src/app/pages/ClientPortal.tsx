@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Input } from '../components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,11 +36,14 @@ import {
   Image as ImageIcon,
   Video,
   Eye,
-  Calculator,
-  DollarSign,
-  TrendingUp
+  EyeOff,
+  KeyRound,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 interface ClientData {
   id: string;
@@ -93,31 +95,43 @@ export default function ClientPortal() {
   const [error, setError] = useState('');
   
   // Tab state
-  const [activeTab, setActiveTab] = useState<'personal' | 'simulation' | 'contracts'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'contracts' | 'password'>('personal');
   
-  // Loan simulation states
-  const [loanAmount, setLoanAmount] = useState('');
-  const [selectedInstallments, setSelectedInstallments] = useState(12);
-  const interestRate = 20; // 20% ao mês
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     // Wait for auth to load
     if (authLoading) {
+      console.log('[CLIENT_PORTAL] Auth still loading...');
       return;
     }
 
+    console.log('[CLIENT_PORTAL] Auth loaded, user:', user);
+    console.log('[CLIENT_PORTAL] User role:', user?.role);
+
     // Verify user is a client
     if (!user) {
-      navigate('/login');
+      console.log('[CLIENT_PORTAL] No user found, redirecting to login');
+      toast.error('Você precisa fazer login para acessar esta página');
+      navigate('/client-portal/login');
       return;
     }
 
     if (user.role !== 'client') {
+      console.log('[CLIENT_PORTAL] User is not a client, role:', user.role);
       toast.error('Acesso negado. Esta área é exclusiva para clientes.');
       navigate('/');
       return;
     }
 
+    console.log('[CLIENT_PORTAL] User verified as client, loading data');
     loadClientData();
   }, [user, authLoading, navigate]);
 
@@ -228,72 +242,75 @@ export default function ClientPortal() {
     }
   };
 
-  // Loan simulation calculations
-  const calculateLoan = () => {
-    const amount = parseFloat(loanAmount.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    if (amount <= 0) {
-      return null;
+  const handlePasswordChange = async () => {
+    if (!currentPassword) {
+      toast.error('Por favor, informe sua senha atual');
+      return;
     }
 
-    // PMT formula: P = [r * PV] / [1 - (1 + r)^-n]
-    const r = interestRate / 100; // Monthly interest rate
-    const n = selectedInstallments; // Number of installments
-    const monthlyPayment = (r * amount) / (1 - Math.pow(1 + r, -n));
-    const totalAmount = monthlyPayment * n;
-    const totalInterest = totalAmount - amount;
+    if (!newPassword) {
+      toast.error('Por favor, informe a nova senha');
+      return;
+    }
 
-    return {
-      requestedAmount: amount,
-      monthlyPayment,
-      totalAmount,
-      totalInterest,
-      installments: n,
-    };
+    if (newPassword.length < 6) {
+      toast.error('A nova senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      toast.error('A nova senha deve ser diferente da senha atual');
+      return;
+    }
+
+    if (!confirmPassword) {
+      toast.error('Por favor, confirme a nova senha');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await apiCall('/users/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      toast.success('Senha alterada com sucesso! Use a nova senha no próximo login.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Erro ao alterar senha');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
-  const getMaxLoanAmount = () => {
-    if (!clientData?.monthlyIncome) return 0;
-    // Convert monthlyIncome to number (handles both number and string formats)
-    const income = typeof clientData.monthlyIncome === 'string' 
-      ? parseFloat(clientData.monthlyIncome.replace(/\./g, '').replace(',', '.'))
-      : clientData.monthlyIncome;
-    const maxInstallment = income * 0.3; // 30% of monthly income
-    
-    // Calculate max loan amount based on max installment
-    // P = [r * PV] / [1 - (1 + r)^-n]
-    // Rearranging: PV = P * [1 - (1 + r)^-n] / r
-    const r = interestRate / 100;
-    const n = selectedInstallments;
-    const maxAmount = maxInstallment * (1 - Math.pow(1 + r, -n)) / r;
-    
-    return maxAmount;
-  };
+  const getPasswordStrength = (password: string) => {
+    if (!password) return { strength: 0, label: '', color: '' };
 
-  const isLoanValid = () => {
-    const simulation = calculateLoan();
-    if (!simulation || !clientData?.monthlyIncome) return false;
-    
-    // Convert monthlyIncome to number (handles both number and string formats)
-    const income = typeof clientData.monthlyIncome === 'string' 
-      ? parseFloat(clientData.monthlyIncome.replace(/\./g, '').replace(',', '.'))
-      : clientData.monthlyIncome;
-    const maxInstallment = income * 0.3;
-    return simulation.monthlyPayment <= maxInstallment;
-  };
+    let strength = 0;
+    if (password.length >= 6) strength++;
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+    if (/\d/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
 
-  const formatCurrencyInput = (value: string) => {
-    // Remove all non-numeric characters except comma
-    const numbers = value.replace(/[^\d]/g, '');
-    if (!numbers) return '';
-    
-    // Convert to number and format
-    const num = parseFloat(numbers) / 100;
-    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
-  const handleLoanAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatCurrencyInput(e.target.value);
-    setLoanAmount(formatted);
+    if (strength <= 2) return { strength, label: 'Fraca', color: 'text-red-600' };
+    if (strength <= 3) return { strength, label: 'Média', color: 'text-amber-600' };
+    return { strength, label: 'Forte', color: 'text-green-600' };
   };
 
   if (loading) {
@@ -340,13 +357,11 @@ export default function ClientPortal() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-white rounded-full p-1 shadow-md ring-1 ring-white/50">
-                <img 
-                  src="/logo.png" 
-                  alt="ALEMÃO.CREFISA" 
-                  className="h-12 w-12 object-contain"
-                />
-              </div>
+              <img 
+                src={logo} 
+                alt="ALEMÃO.CREFISA" 
+                className="h-12 w-12 object-contain rounded-full drop-shadow-md"
+              />
               <div>
                 <h1 className="text-lg font-semibold text-white">Portal do Cliente</h1>
                 <p className="text-sm text-amber-200">{clientData.fullName}</p>
@@ -385,23 +400,7 @@ export default function ClientPortal() {
                   <span>Dados Pessoais</span>
                 </div>
               </button>
-              
-              {clientData.monthlyIncome && (
-                <button
-                  onClick={() => setActiveTab('simulation')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'simulation'
-                      ? 'border-amber-500 text-amber-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
-                    <span>Simulação de Empréstimo</span>
-                  </div>
-                </button>
-              )}
-              
+
               <button
                 onClick={() => setActiveTab('contracts')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -413,6 +412,20 @@ export default function ClientPortal() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
                   <span>Meus Contratos</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('password')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'password'
+                    ? 'border-amber-500 text-amber-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  <span>Alterar Senha</span>
                 </div>
               </button>
             </nav>
@@ -567,132 +580,130 @@ export default function ClientPortal() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {/* Documento Frente */}
-                  {clientData.documents.front && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                        <ImageIcon className="h-3 w-3" />
-                        Doc. Frente
-                      </p>
-                      <div className="relative group">
-                        <img
-                          src={clientData.documents.front}
-                          alt="Documento Frente"
-                          className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                        <a
-                          href={clientData.documents.front}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                        >
-                          <div className="text-white text-center">
-                            <Eye className="h-6 w-6 mx-auto mb-1" />
-                            <p className="text-xs font-medium">Ver</p>
+                {/* Fotos */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    📷 Fotos (4 obrigatórias + 2 opcionais)
+                  </h3>
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {['foto1', 'foto2', 'foto3', 'foto4', 'foto5', 'foto6'].map((type, index) => {
+                      const isRequired = index < 4;
+                      const document = clientData.documents?.[type];
+                      
+                      // Handle both object format and legacy string format
+                      const isObject = document && typeof document === 'object';
+                      const isString = document && typeof document === 'string';
+                      const hasDocument = isObject ? (document.url || document.path) : isString;
+                      const documentUrl = isObject ? (document.url || document.path) : document;
+                      
+                      return hasDocument && documentUrl ? (
+                        <div key={type} className="space-y-1">
+                          <p className="text-[10px] font-medium text-gray-700 flex items-center gap-1">
+                            <ImageIcon className="h-2.5 w-2.5" />
+                            Foto {index + 1}
+                            {!isRequired && <span className="text-gray-500 text-[9px] ml-0.5">(opc)</span>}
+                          </p>
+                          <div className="relative group">
+                            <img
+                              src={documentUrl}
+                              alt={`Foto ${index + 1}`}
+                              className="w-full h-20 object-cover rounded border border-green-500"
+                              onError={(e) => {
+                                console.error(`Failed to load image: ${type}`, documentUrl);
+                                e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23ddd" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="12">Erro</text></svg>';
+                              }}
+                            />
+                            <a
+                              href={documentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded"
+                            >
+                              <div className="text-white text-center">
+                                <Eye className="h-5 w-5 mx-auto mb-0.5" />
+                                <p className="text-[10px] font-medium">Ver</p>
+                              </div>
+                            </a>
                           </div>
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="text-xs font-medium">Enviado</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Documento Verso */}
-                  {clientData.documents.back && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                        <ImageIcon className="h-3 w-3" />
-                        Doc. Verso
-                      </p>
-                      <div className="relative group">
-                        <img
-                          src={clientData.documents.back}
-                          alt="Documento Verso"
-                          className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                        <a
-                          href={clientData.documents.back}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                        >
-                          <div className="text-white text-center">
-                            <Eye className="h-6 w-6 mx-auto mb-1" />
-                            <p className="text-xs font-medium">Ver</p>
+                          <div className="flex items-center gap-0.5 text-green-600">
+                            <CheckCircle className="h-2.5 w-2.5" />
+                            <span className="text-[10px] font-medium">Enviada</span>
                           </div>
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="text-xs font-medium">Enviado</span>
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
 
-                  {/* Selfie */}
-                  {clientData.documents.selfie && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                        <ImageIcon className="h-3 w-3" />
-                        Selfie
-                      </p>
-                      <div className="relative group">
-                        <img
-                          src={clientData.documents.selfie}
-                          alt="Selfie com Documento"
-                          className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                        <a
-                          href={clientData.documents.selfie}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                        >
-                          <div className="text-white text-center">
-                            <Eye className="h-6 w-6 mx-auto mb-1" />
-                            <p className="text-xs font-medium">Ver</p>
+                {/* Vídeos */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    🎥 Vídeos (1 obrigatório + 1 opcional)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {['video1', 'video2'].map((type, index) => {
+                      const isRequired = index === 0;
+                      const document = clientData.documents?.[type];
+                      
+                      // Handle both object format and legacy string format
+                      const isObject = document && typeof document === 'object';
+                      const isString = document && typeof document === 'string';
+                      const hasDocument = isObject ? (document.url || document.path) : isString;
+                      const documentUrl = isObject ? (document.url || document.path) : document;
+                      
+                      return hasDocument && documentUrl ? (
+                        <div key={type} className="space-y-1.5">
+                          <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                            <Video className="h-3.5 w-3.5" />
+                            Vídeo {index + 1}
+                            {!isRequired && <span className="text-gray-500 text-[10px] ml-1">(opcional)</span>}
+                          </p>
+                          <div className="relative group">
+                            <video
+                              src={documentUrl}
+                              controls
+                              className="w-full h-32 object-cover rounded border border-green-500 bg-black"
+                              preload="metadata"
+                              onError={(e) => {
+                                console.error(`Failed to load video: ${type}`, documentUrl);
+                              }}
+                            >
+                              Seu navegador não suporta vídeos HTML5.
+                            </video>
                           </div>
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="text-xs font-medium">Enviado</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Vídeo */}
-                  {clientData.documents.video && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                        <Video className="h-3 w-3" />
-                        Vídeo
-                      </p>
-                      <div className="relative group">
-                        <video
-                          src={clientData.documents.video}
-                          controls
-                          className="w-full h-24 object-cover rounded-lg border-2 border-gray-200 bg-black"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle className="h-3 w-3" />
-                        <span className="text-xs font-medium">Enviado</span>
-                      </div>
-                    </div>
-                  )}
+                          <div className="flex items-center gap-0.5 text-green-600">
+                            <CheckCircle className="h-2.5 w-2.5" />
+                            <span className="text-[10px] font-medium">Enviado</span>
+                          </div>
+                          {isObject && document.fileName && (
+                            <p className="text-[9px] text-gray-500 truncate" title={document.fileName}>
+                              📁 {document.fileName}
+                            </p>
+                          )}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
 
                 {/* Warning if no documents */}
-                {(!clientData.documents.front && !clientData.documents.back && !clientData.documents.selfie && !clientData.documents.video) && (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-gray-500">Nenhum documento enviado ainda</p>
-                  </div>
-                )}
+                {(() => {
+                  const allDocTypes = ['foto1', 'foto2', 'foto3', 'foto4', 'foto5', 'foto6', 'video1', 'video2'];
+                  const hasAnyDocument = allDocTypes.some(type => {
+                    const doc = clientData.documents?.[type];
+                    if (!doc) return false;
+                    const isObj = typeof doc === 'object';
+                    const isStr = typeof doc === 'string';
+                    return isObj ? (doc.url || doc.path) : isStr;
+                  });
+                  
+                  return !hasAnyDocument ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-gray-500">Nenhum documento enviado ainda</p>
+                    </div>
+                  ) : null;
+                })()}
               </CardContent>
             </Card>
 
@@ -771,211 +782,6 @@ export default function ClientPortal() {
                 </AlertDialog>
               </CardContent>
             </Card>
-          </>
-        )}
-
-        {/* Tab Content - Loan Simulation */}
-        {activeTab === 'simulation' && (
-          <>
-            {/* Loan Simulation */}
-            {clientData.monthlyIncome && (
-              <Card className="mb-6 bg-gradient-to-br from-emerald-50 to-amber-50/30 border-amber-400">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2" style={{ color: '#115740' }}>
-                    <Calculator className="h-5 w-5" />
-                    Simule seu Empréstimo
-                  </CardTitle>
-                  <CardDescription>
-                    Calcule as parcelas do seu empréstimo. Limite: parcela de até 30% da sua renda mensal.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Renda mensal info */}
-                  <div className="bg-white/80 rounded-lg p-4 border border-amber-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5" style={{ color: '#115740' }} />
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Sua Renda Mensal</p>
-                          <p className="text-lg font-bold text-gray-900">
-                            R$ {clientData.monthlyIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Parcela Máxima (30%)</p>
-                        <p className="text-lg font-bold" style={{ color: '#d4af37' }}>
-                          R$ {((parseFloat(String(clientData.monthlyIncome).replace(/\./g, '').replace(',', '.')) || 0) * 0.3).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Simulation Form */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Valor Desejado
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                          R$
-                        </span>
-                        <Input
-                          type="text"
-                          value={loanAmount}
-                          onChange={handleLoanAmountChange}
-                          placeholder="0,00"
-                          className="pl-10 text-lg font-semibold"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Valor máximo disponível: {formatCurrency(getMaxLoanAmount())}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Número de Parcelas
-                      </label>
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        {[6, 12, 18, 24, 30, 36].map((months) => (
-                          <Button
-                            key={months}
-                            type="button"
-                            variant={selectedInstallments === months ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSelectedInstallments(months)}
-                            className="font-semibold"
-                          >
-                            {months}x
-                          </Button>
-                        ))}
-                      </div>
-                      
-                      {/* Fine adjustment controls */}
-                      <div className="flex items-center gap-2 justify-center bg-gray-50 rounded-lg p-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedInstallments(Math.max(1, selectedInstallments - 1))}
-                          className="h-8 w-8 p-0"
-                        >
-                          -
-                        </Button>
-                        <div className="bg-white border border-gray-200 rounded px-4 py-1 min-w-[80px] text-center">
-                          <span className="text-lg font-bold text-gray-900">{selectedInstallments}x</span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedInstallments(Math.min(60, selectedInstallments + 1))}
-                          className="h-8 w-8 p-0"
-                        >
-                          +
-                        </Button>
-                      </div>
-                      
-                      <p className="text-xs text-gray-500 mt-1">
-                        Taxa de juros: {interestRate}% ao mês
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Simulation Result */}
-                  {calculateLoan() && (
-                    <div className="bg-white rounded-lg border-2 border-amber-400 p-5 space-y-4">
-                      <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
-                        <TrendingUp className="h-5 w-5" style={{ color: '#115740' }} />
-                        <h3 className="font-semibold text-lg text-gray-900">Resultado da Simulação</h3>
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-emerald-50 rounded-lg">
-                          <p className="text-sm text-gray-600 mb-1">Valor Solicitado</p>
-                          <p className="text-2xl font-bold" style={{ color: '#115740' }}>
-                            {formatCurrency(calculateLoan()!.requestedAmount)}
-                          </p>
-                        </div>
-
-                        <div className={`text-center p-4 rounded-lg ${isLoanValid() ? 'bg-amber-50' : 'bg-red-50'}`}>
-                          <p className="text-sm text-gray-600 mb-1">Parcela Mensal</p>
-                          <p className={`text-2xl font-bold ${isLoanValid() ? '' : 'text-red-900'}`} style={isLoanValid() ? { color: '#d4af37' } : {}}>
-                            {formatCurrency(calculateLoan()!.monthlyPayment)}
-                          </p>
-                          {!isLoanValid() && (
-                            <p className="text-xs text-red-600 mt-1 font-medium">
-                              Excede 30% da renda
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="text-center p-4 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600 mb-1">Total a Pagar</p>
-                          <p className="text-2xl font-bold text-gray-900">
-                            {formatCurrency(calculateLoan()!.totalAmount)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-gray-200">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">Total de Juros:</span>
-                          <span className="font-bold text-gray-900">
-                            {formatCurrency(calculateLoan()!.totalInterest)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">Número de Parcelas:</span>
-                          <span className="font-bold text-gray-900">
-                            {calculateLoan()!.installments}x
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Validation Message */}
-                      {isLoanValid() ? (
-                        <Alert className="bg-emerald-50 border-emerald-600">
-                          <CheckCircle className="h-4 w-4 text-emerald-700" />
-                          <AlertDescription className="text-emerald-800">
-                            ✅ Simulação aprovada! A parcela está dentro do limite de 30% da sua renda.
-                            Entre em contato conosco para formalizar seu empréstimo.
-                          </AlertDescription>
-                        </Alert>
-                      ) : (
-                        <Alert className="bg-red-50 border-red-300">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                          <AlertDescription className="text-red-800">
-                            ⚠️ A parcela mensal excede 30% da sua renda. Reduza o valor ou aumente o número de parcelas.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
-                      <Button
-                        className="w-full"
-                        style={{ backgroundColor: '#115740' }}
-                        disabled={!isLoanValid()}
-                        onClick={() => {
-                          toast.success('Entre em contato com nossa equipe para formalizar seu empréstimo!');
-                        }}
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Solicitar Este Empréstimo
-                      </Button>
-                    </div>
-                  )}
-
-                  {!loanAmount && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Calculator className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                      <p>Digite o valor desejado para simular seu empréstimo</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </>
         )}
 
@@ -1096,6 +902,180 @@ export default function ClientPortal() {
                     })}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* Tab Content - Password */}
+        {activeTab === 'password' && (
+          <>
+            {/* User Info Alert */}
+            <Alert className="mb-6 bg-emerald-50 border-emerald-500">
+              <Shield className="h-4 w-4 text-emerald-600" />
+              <AlertDescription className="text-emerald-900">
+                <strong>Usuário logado:</strong> {clientData.fullName} ({user?.email})
+              </AlertDescription>
+            </Alert>
+
+            {/* Password Change */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" style={{ color: '#115740' }} />
+                  Alterar Senha
+                </CardTitle>
+                <CardDescription>Mantenha sua conta segura alterando sua senha regularmente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="current-password">Senha Atual *</Label>
+                    <div className="relative">
+                      <Input
+                        id="current-password"
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Digite sua senha atual"
+                        className="pr-10"
+                        disabled={passwordLoading}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 px-3 py-2 text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        disabled={passwordLoading}
+                      >
+                        {showCurrentPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold text-gray-900 mb-4">Nova Senha</h3>
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="new-password">Nova Senha *</Label>
+                        <div className="relative">
+                          <Input
+                            id="new-password"
+                            type={showNewPassword ? 'text' : 'password'}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Digite sua nova senha (mínimo 6 caracteres)"
+                            className="pr-10"
+                            disabled={passwordLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 px-3 py-2 text-gray-500 hover:text-gray-700"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            disabled={passwordLoading}
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
+                        {newPassword && (
+                          <p className={`text-xs mt-1 ${getPasswordStrength(newPassword).color}`}>
+                            Força da senha: <strong>{getPasswordStrength(newPassword).label}</strong>
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="confirm-password">Confirmar Nova Senha *</Label>
+                        <div className="relative">
+                          <Input
+                            id="confirm-password"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirme sua nova senha"
+                            className="pr-10"
+                            disabled={passwordLoading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 px-3 py-2 text-gray-500 hover:text-gray-700"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            disabled={passwordLoading}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
+                        {confirmPassword && newPassword && (
+                          <div className="flex items-center gap-1 text-xs mt-1">
+                            {confirmPassword === newPassword ? (
+                              <>
+                                <CheckCircle className="h-3 w-3 text-green-600" />
+                                <span className="text-green-600">As senhas coincidem</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="h-3 w-3 text-red-600" />
+                                <span className="text-red-600">As senhas não coincidem</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security Tips */}
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <Lock className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-900 text-sm">
+                      <p className="font-semibold mb-2">💡 Dicas de segurança:</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>Use no mínimo 6 caracteres (recomendado 8 ou mais)</li>
+                        <li>Combine letras maiúsculas e minúsculas</li>
+                        <li>Inclua números e caracteres especiais (!@#$%&*)</li>
+                        <li>Não use informações pessoais óbvias</li>
+                        <li>Não reutilize senhas de outros sistemas</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handlePasswordChange}
+                      disabled={passwordLoading}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {passwordLoading ? 'Alterando...' : 'Alterar Senha'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                        setShowCurrentPassword(false);
+                        setShowNewPassword(false);
+                        setShowConfirmPassword(false);
+                      }}
+                      disabled={passwordLoading}
+                    >
+                      Limpar
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </>

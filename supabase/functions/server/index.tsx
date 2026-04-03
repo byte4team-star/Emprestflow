@@ -7,12 +7,12 @@ import { addClientPortalRoutes } from "./client_portal_routes.tsx";
 import { addBillingRoutes } from "./billing_routes.tsx";
 import { addHealthRoutes } from "./health.tsx";
 
-// Server version: 2.3.0 - Fixed timezone in date processing and message formatting - Updated at 2026-03-28
+// Server version: 2.4.0 - Updated to use SERVICE_ROLE_KEY environment variable - Updated at 2026-03-29
 const app = new Hono();
 
 // Supabase clients
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 // Evolution API credentials
@@ -73,7 +73,7 @@ app.use(
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization", "X-User-Token"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
   }),
@@ -191,30 +191,48 @@ async function authenticateUser(authHeader: string | null, userTokenHeader: stri
 
     if (!profile) {
       console.log('[AUTH] Creating new profile for user:', userId);
+      let userRole = authUser.user_metadata?.role || 'admin';
+      // Convert operator to admin (operators are now admins)
+      if (userRole === 'operator') {
+        userRole = 'admin';
+      }
       profile = {
         id: userId,
         email: userEmail,
         name: authUser.user_metadata?.name || userEmail.split('@')[0] || 'User',
-        role: authUser.user_metadata?.role || 'operator',
+        role: userRole,
         createdAt: new Date().toISOString(),
       };
       await kv.set(`user_profile:${userId}`, JSON.stringify(profile));
-      console.log('[AUTH] Profile created successfully');
+      console.log('[AUTH] Profile created successfully with role:', userRole);
     } else {
       console.log('[AUTH] Profile found:', { role: profile.role, name: profile.name });
+      // Convert operator to admin if found in profile
+      if (profile.role === 'operator') {
+        console.log('[AUTH] Converting operator to admin in existing profile');
+        profile.role = 'admin';
+        await kv.set(`user_profile:${userId}`, JSON.stringify(profile));
+      }
     }
 
     console.log('[AUTH] ===== authenticateUser SUCCESS =====');
-    
-    return { 
+
+    // Ensure operator role is converted to admin
+    let finalRole = profile.role || 'admin';
+    if (finalRole === 'operator') {
+      finalRole = 'admin';
+    }
+
+    return {
       user: {
         id: userId,
         email: userEmail,
-        role: profile.role || 'operator',
+        role: finalRole,
         name: profile.name,
-        ...profile
-      }, 
-      error: null 
+        ...profile,
+        role: finalRole // Override with converted role
+      },
+      error: null
     };
   } catch (error) {
     console.error('[AUTH] Unexpected error in authenticateUser:', error.message);
@@ -402,6 +420,8 @@ app.post("/make-server-bd42bc02/auth/signup", async (c) => {
 
     // Security: Require access code for admin/operator registration
     const ADMIN_ACCESS_CODE = 'emprestflow26';
+    let accessCodeValidated = false;
+    
     if (role === 'admin' || role === 'operator') {
       // Normalize access code: trim whitespace
       const normalizedAccessCode = (accessCode || '').trim();
@@ -423,13 +443,20 @@ app.post("/make-server-bd42bc02/auth/signup", async (c) => {
       }
       
       console.log('[SIGNUP] ✅ Access code validated successfully');
+      accessCodeValidated = true;
     }
 
-    // Only admins can create admin accounts
-    const authHeader = c.req.header('Authorization');
-    if (role === 'admin' && authHeader) {
-      const { user } = await authenticateUser(authHeader);
-      if (!user || user.role !== 'admin') {
+    // Only admins can create admin accounts (unless valid access code is provided)
+    // This allows the first admin to be created with the access code
+    if (role === 'admin' && !accessCodeValidated) {
+      const authHeader = c.req.header('Authorization');
+      if (authHeader) {
+        const { user } = await authenticateUser(authHeader);
+        if (!user || user.role !== 'admin') {
+          return c.json({ error: 'Only admins can create admin accounts' }, 403);
+        }
+      } else {
+        // No auth header and no access code - reject
         return c.json({ error: 'Only admins can create admin accounts' }, 403);
       }
     }
@@ -920,29 +947,80 @@ app.get("/make-server-bd42bc02/clients/:id", requireAuth, async (c) => {
     }
 
     const client = JSON.parse(clientData);
+    let hasInvalidDocs = false;
     
-    // Generate signed URLs for documents
+    console.log(`[CLIENT_GET] Loading client ${clientId}, has documents:`, !!client.documents);
+    
+    // Generate signed URLs for documents while preserving document metadata
+    // Process in parallel for better performance
     if (client.documents) {
-      for (const [type, doc] of Object.entries(client.documents)) {
-        if (doc && doc.path) {
+      const documentEntries = Object.entries(client.documents).filter(([_, doc]) => doc);
+      
+      console.log(`[CLIENT_GET] Processing ${documentEntries.length} documents in parallel`);
+      
+      await Promise.all(documentEntries.map(async ([type, doc]) => {
+        // Handle object format (new format with metadata)
+        if (typeof doc === 'object' && doc.path) {
           try {
+            console.log(`[CLIENT_GET] Generating signed URL for ${type}`);
+            
+            // Generate signed URL directly (faster than checking existence first)
             const { data: signedUrlData, error } = await supabaseAdmin.storage
               .from('make-bd42bc02-documents')
               .createSignedUrl(doc.path, 3600); // Valid for 1 hour
             
             if (!error && signedUrlData?.signedUrl) {
-              client.documents[type] = signedUrlData.signedUrl;
+              console.log(`[CLIENT_GET] ✓ ${type} OK`);
+              // Keep document metadata AND add the signed URL
+              client.documents[type] = {
+                ...doc,
+                url: signedUrlData.signedUrl
+              };
             } else {
-              console.error(`[CLIENT_GET] Error generating signed URL for ${type}:`, error);
+              // File doesn't exist or error - clean it up
+              console.error(`[CLIENT_GET] ✗ ${type} failed:`, error?.message || 'Unknown error');
               client.documents[type] = null;
+              hasInvalidDocs = true;
             }
           } catch (error) {
-            console.error(`[CLIENT_GET] Error processing document ${type}:`, error);
+            console.error(`[CLIENT_GET] ✗ ${type} error:`, error);
             client.documents[type] = null;
+            hasInvalidDocs = true;
           }
+        } 
+        // Handle legacy string format (URL already stored)
+        else if (typeof doc === 'string') {
+          console.log(`[CLIENT_GET] ${type} legacy format (keeping)`);
+          client.documents[type] = doc;
         }
-      }
+      }));
     }
+    
+    // Save cleaned up documents if any were invalid
+    if (hasInvalidDocs) {
+      console.log(`[CLIENT_GET] 💾 Saving cleaned documents to database`);
+      await kv.set(`client:${clientId}`, JSON.stringify(client));
+    }
+    
+    // Final debug log before returning
+    console.log(`[CLIENT_GET] ✅ Returning client ${clientId} with documents:`, 
+      Object.keys(client.documents || {}).filter(key => client.documents[key])
+    );
+    
+    // Log each document URL for debugging
+    if (client.documents) {
+      Object.entries(client.documents).forEach(([type, doc]) => {
+        if (doc) {
+          const url = typeof doc === 'object' ? doc.url : doc;
+          console.log(`[CLIENT_GET] ${type} URL:`, url ? url.substring(0, 100) + '...' : 'NO URL');
+        }
+      });
+    }
+    
+    // 🔥 FORCE NO-CACHE: Prevent browser/proxy caching
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    c.header('Pragma', 'no-cache');
+    c.header('Expires', '0');
     
     return c.json({ client });
   } catch (error) {
@@ -958,21 +1036,42 @@ app.put("/make-server-bd42bc02/clients/:id", requireAuth, async (c) => {
     const clientId = c.req.param('id');
     const body = await c.req.json();
     
+    console.log('[CLIENT_UPDATE] ===== START =====');
+    console.log('[CLIENT_UPDATE] Client ID:', clientId);
+    console.log('[CLIENT_UPDATE] Update fields:', Object.keys(body));
+    
     const clientData = await kv.get(`client:${clientId}`);
     if (!clientData) {
       return c.json({ error: 'Client not found' }, 404);
     }
 
     const existingClient = JSON.parse(clientData);
+    
+    console.log('[CLIENT_UPDATE] Existing documents:', Object.keys(existingClient.documents || {}));
+    console.log('[CLIENT_UPDATE] Body documents:', Object.keys(body.documents || {}));
+    
+    // 🔥 CRITICAL: MERGE documents instead of replacing
     const updatedClient = {
       ...existingClient,
       ...body,
+      // Preserve and merge documents - never replace completely
+      documents: {
+        ...existingClient.documents,
+        ...body.documents,
+      },
       id: clientId,
       updatedAt: new Date().toISOString(),
       updatedBy: user.id,
     };
+    
+    console.log('[CLIENT_UPDATE] Final documents:', Object.keys(updatedClient.documents || {}));
 
     await kv.set(`client:${clientId}`, JSON.stringify(updatedClient));
+    
+    // 🔥 Verify the save worked
+    const verifyData = await kv.get(`client:${clientId}`);
+    const verifyClient = JSON.parse(verifyData);
+    console.log('[CLIENT_UPDATE] ✅ Saved to KV. Documents verified:', Object.keys(verifyClient.documents || {}));
 
     await logAudit({
       userId: user.id,
@@ -998,41 +1097,78 @@ app.post("/make-server-bd42bc02/clients/:id/documents", requireAuth, async (c) =
   try {
     const user = c.get('user');
     const clientId = c.req.param('id');
-    const body = await c.req.json();
-    const { documentType, fileName, fileData, mimeType } = body;
+    
+    // Parse FormData instead of JSON for better memory efficiency
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    const documentType = formData.get('documentType') as string;
+    
+    console.log(`[UPLOAD] ===== START =====`);
+    console.log(`[UPLOAD] Client ID: ${clientId}`);
+    console.log(`[UPLOAD] Document Type: ${documentType}`);
+    console.log(`[UPLOAD] File: ${file ? file.name : 'none'}`);
+    
+    if (!file) {
+      console.error('[UPLOAD] ❌ No file provided');
+      return c.json({ error: 'No file provided' }, 400);
+    }
 
-    if (!['front', 'back', 'selfie', 'video'].includes(documentType)) {
+    // Support both old format (front, back, selfie, video) and new format (foto1-6, video1-2, profilePhoto)
+    const validTypes = [
+      'front', 'back', 'selfie', 'video',
+      'profilePhoto',
+      'foto1', 'foto2', 'foto3', 'foto4', 'foto5', 'foto6',
+      'video1', 'video2'
+    ];
+    
+    if (!validTypes.includes(documentType)) {
+      console.error(`[UPLOAD] ❌ Invalid document type: ${documentType}`);
       return c.json({ error: 'Invalid document type' }, 400);
     }
 
-    // Validate file size (50MB max)
-    const fileSizeBytes = (fileData.length * 3) / 4; // Base64 to bytes approximation
-    if (fileSizeBytes > 52428800) {
-      return c.json({ error: 'File size exceeds 50MB limit' }, 400);
+    // Validate file size - 35MB max
+    const maxSizeBytes = 35 * 1024 * 1024;
+    
+    console.log(`[UPLOAD] File size: ${(file.size / 1024 / 1024).toFixed(2)}MB for ${documentType}`);
+    
+    if (file.size > maxSizeBytes) {
+      console.error(`[UPLOAD] ❌ File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      return c.json({ 
+        error: `Arquivo muito grande. Máximo: 35MB. Tamanho: ${(file.size / 1024 / 1024).toFixed(2)}MB` 
+      }, 400);
     }
 
     const clientData = await kv.get(`client:${clientId}`);
     if (!clientData) {
+      console.error(`[UPLOAD] ❌ Client not found: ${clientId}`);
       return c.json({ error: 'Client not found' }, 404);
     }
 
-    // Convert base64 to blob
-    const base64Data = fileData.split(',')[1] || fileData;
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    console.log('[UPLOAD] Reading file buffer...');
+    
+    // Read file as ArrayBuffer (much more memory efficient than base64)
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    console.log('[UPLOAD] Buffer ready, size:', uint8Array.length);
 
-    const filePath = `${clientId}/${documentType}/${fileName}`;
+    const filePath = `${clientId}/${documentType}/${file.name}`;
+    
+    console.log('[UPLOAD] Uploading to storage:', filePath);
     
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('make-bd42bc02-documents')
-      .upload(filePath, binaryData, {
-        contentType: mimeType,
+      .upload(filePath, uint8Array, {
+        contentType: file.type,
         upsert: true,
       });
 
     if (uploadError) {
-      console.error('[UPLOAD] Error uploading file:', uploadError);
+      console.error('[UPLOAD] ❌ Storage error:', uploadError);
       return c.json({ error: uploadError.message }, 500);
     }
+
+    console.log('[UPLOAD] ✅ Upload successful to storage');
 
     // Generate signed URL (valid for 1 hour)
     const { data: signedUrlData } = await supabaseAdmin.storage
@@ -1041,24 +1177,48 @@ app.post("/make-server-bd42bc02/clients/:id/documents", requireAuth, async (c) =
 
     // Update client document reference
     const client = JSON.parse(clientData);
+    if (!client.documents) {
+      client.documents = {};
+      console.log('[UPLOAD] Created new documents object');
+    }
+    
+    console.log(`[UPLOAD] Saving metadata for ${documentType}...`);
+    
     client.documents[documentType] = {
       path: filePath,
-      fileName,
-      mimeType,
+      fileName: file.name,
+      mimeType: file.type,
       uploadedAt: new Date().toISOString(),
       uploadedBy: user.id,
     };
     client.updatedAt = new Date().toISOString();
+    
+    console.log(`[UPLOAD] Document metadata:`, client.documents[documentType]);
 
     await kv.set(`client:${clientId}`, JSON.stringify(client));
+    
+    console.log(`[UPLOAD] ✅ Client data saved to KV store`);
+    
+    // Verify the save worked by re-reading from KV
+    const verifyData = await kv.get(`client:${clientId}`);
+    const verifyClient = JSON.parse(verifyData);
+    console.log(`[UPLOAD] 🔍 Verification - ${documentType} in KV:`, !!verifyClient.documents?.[documentType]);
+    console.log(`[UPLOAD] 🔍 All documents in KV:`, Object.keys(verifyClient.documents || {}));
+    if (verifyClient.documents?.[documentType]) {
+      console.log(`[UPLOAD] 🔍 Verification - ${documentType} path:`, verifyClient.documents[documentType].path);
+    } else {
+      console.error(`[UPLOAD] ⚠️ WARNING: ${documentType} NOT FOUND in KV after save!`);
+    }
 
     await logAudit({
       userId: user.id,
       action: 'DOCUMENT_UPLOADED',
       resource: `client:${clientId}`,
       ip: c.req.header('x-forwarded-for') || 'unknown',
-      metadata: { documentType, fileName }
+      metadata: { documentType, fileName: file.name }
     });
+    
+    console.log(`[UPLOAD] ✅ COMPLETE - ${documentType} uploaded and saved`);
 
     return c.json({ 
       success: true, 
@@ -1066,7 +1226,7 @@ app.post("/make-server-bd42bc02/clients/:id/documents", requireAuth, async (c) =
       document: client.documents[documentType]
     });
   } catch (error) {
-    console.error('[UPLOAD] Unexpected error:', error);
+    console.error('[UPLOAD] ❌ Unexpected error:', error);
     return c.json({ error: 'Error uploading document' }, 500);
   }
 });
@@ -1076,6 +1236,71 @@ app.get("/make-server-bd42bc02/clients/:id/documents/:type", requireAuth, async 
   try {
     const clientId = c.req.param('id');
     const documentType = c.req.param('type');
+    
+    console.log(`[DOCUMENT_URL] ===== GET URL FOR ${documentType} =====`);
+    console.log(`[DOCUMENT_URL] Client ID: ${clientId}`);
+
+    const clientData = await kv.get(`client:${clientId}`);
+    if (!clientData) {
+      console.error(`[DOCUMENT_URL] ❌ Client not found: ${clientId}`);
+      return c.json({ error: 'Client not found' }, 404);
+    }
+
+    const client = JSON.parse(clientData);
+    console.log(`[DOCUMENT_URL] All document keys:`, Object.keys(client.documents || {}));
+    
+    const document = client.documents?.[documentType];
+    
+    console.log(`[DOCUMENT_URL] Document found:`, !!document);
+    if (document) {
+      console.log(`[DOCUMENT_URL] Document path:`, document.path);
+    }
+
+    if (!document || !document.path) {
+      console.error(`[DOCUMENT_URL] ❌ Document not found: ${documentType}`);
+      return c.json({ error: 'Document not found' }, 404);
+    }
+
+    // Generate signed URL directly (faster, avoids double storage call)
+    console.log(`[DOCUMENT_URL] Creating signed URL for path:`, document.path);
+    
+    const { data: signedUrlData, error } = await supabaseAdmin.storage
+      .from('make-bd42bc02-documents')
+      .createSignedUrl(document.path, 3600);
+
+    if (error) {
+      console.error('[DOCUMENT_URL] ❌ Error creating signed URL:', error);
+      console.log('[DOCUMENT_URL] 🧹 Cleaning up invalid document reference');
+      
+      // Clean up the invalid reference from database
+      client.documents[documentType] = null;
+      await kv.set(`client:${clientId}`, JSON.stringify(client));
+      
+      return c.json({ error: 'Document file not found in storage' }, 404);
+    }
+
+    console.log(`[DOCUMENT_URL] ✅ Signed URL created successfully`);
+    
+    // 🔥 FORCE NO-CACHE: Prevent browser/proxy caching
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    c.header('Pragma', 'no-cache');
+    c.header('Expires', '0');
+    
+    return c.json({ url: signedUrlData.signedUrl, document });
+  } catch (error) {
+    console.error('[DOCUMENT_URL] Error:', error);
+    return c.json({ error: 'Error fetching document URL' }, 500);
+  }
+});
+
+// Delete document
+app.delete("/make-server-bd42bc02/clients/:id/documents/:type", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const clientId = c.req.param('id');
+    const documentType = c.req.param('type');
+
+    console.log('[DELETE_DOCUMENT] Deleting:', { clientId, documentType, userId: user.id });
 
     const clientData = await kv.get(`client:${clientId}`);
     if (!clientData) {
@@ -1089,36 +1314,36 @@ app.get("/make-server-bd42bc02/clients/:id/documents/:type", requireAuth, async 
       return c.json({ error: 'Document not found' }, 404);
     }
 
-    // First check if file exists in storage
-    const { data: fileExists, error: existsError } = await supabaseAdmin.storage
+    // Delete from storage
+    const { error: deleteError } = await supabaseAdmin.storage
       .from('make-bd42bc02-documents')
-      .list(document.path.split('/').slice(0, -1).join('/'), {
-        search: document.path.split('/').pop()
-      });
+      .remove([document.path]);
 
-    if (existsError || !fileExists || fileExists.length === 0) {
-      console.error('[DOCUMENT_URL] File does not exist in storage:', document.path);
-      
-      // Clean up the invalid reference from database
-      client.documents[documentType] = null;
-      await kv.set(`client:${clientId}`, JSON.stringify(client));
-      
-      return c.json({ error: 'Document file not found in storage' }, 404);
+    if (deleteError) {
+      console.error('[DELETE_DOCUMENT] Error deleting from storage:', deleteError);
+      // Continue anyway to clean up database reference
     }
 
-    const { data: signedUrlData, error } = await supabaseAdmin.storage
-      .from('make-bd42bc02-documents')
-      .createSignedUrl(document.path, 3600);
+    // Remove from client record
+    delete client.documents[documentType];
+    client.updatedAt = new Date().toISOString();
 
-    if (error) {
-      console.error('[DOCUMENT_URL] Error creating signed URL:', error);
-      return c.json({ error: error.message }, 500);
-    }
+    await kv.set(`client:${clientId}`, JSON.stringify(client));
 
-    return c.json({ url: signedUrlData.signedUrl, document });
+    await logAudit({
+      userId: user.id,
+      action: 'DOCUMENT_DELETED',
+      resource: `client:${clientId}`,
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: { documentType, fileName: document.fileName }
+    });
+
+    console.log('[DELETE_DOCUMENT] ✅ Document deleted successfully');
+
+    return c.json({ success: true, message: 'Document deleted successfully' });
   } catch (error) {
-    console.error('[DOCUMENT_URL] Error:', error);
-    return c.json({ error: 'Error fetching document URL' }, 500);
+    console.error('[DELETE_DOCUMENT] Unexpected error:', error);
+    return c.json({ error: 'Error deleting document' }, 500);
   }
 });
 
@@ -1136,6 +1361,7 @@ app.post("/make-server-bd42bc02/contracts", requireAuth, async (c) => {
       clientId,
       totalAmount,
       installments,
+      installmentPeriod,
       firstDueDate,
       interestRate,
       lateFeeRate,
@@ -1160,9 +1386,26 @@ app.post("/make-server-bd42bc02/contracts", requireAuth, async (c) => {
     const rate = (interestRate || 20) / 100; // Convert percentage to decimal
     const totalWithInterest = totalAmount * (1 + rate);
     const installmentAmount = totalWithInterest / installments;
+    
+    // Helper function to calculate next due date based on period
+    function calculateNextDueDate(startDate: Date, index: number, period: string): Date {
+      const nextDate = new Date(startDate);
+      
+      if (period === 'daily') {
+        nextDate.setUTCDate(startDate.getUTCDate() + index);
+      } else if (period === 'weekly') {
+        nextDate.setUTCDate(startDate.getUTCDate() + (index * 7));
+      } else { // monthly (default)
+        nextDate.setUTCMonth(startDate.getUTCMonth() + index);
+      }
+      
+      return nextDate;
+    }
 
     // Generate installments
     const installmentsList = [];
+    const period = installmentPeriod || 'monthly';
+    
     for (let i = 0; i < installments; i++) {
       // Fix timezone issue: parse date and add fixed noon time to prevent day shifts
       const dueDateParts = firstDueDate.split('-'); // YYYY-MM-DD
@@ -1171,7 +1414,8 @@ app.post("/make-server-bd42bc02/contracts", requireAuth, async (c) => {
       const day = parseInt(dueDateParts[2]);
       
       // Use Date.UTC to avoid timezone issues - creates date in UTC at noon
-      const dueDate = new Date(Date.UTC(year, month + i, day, 12, 0, 0));
+      const startDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+      const dueDate = calculateNextDueDate(startDate, i, period);
       
       // Format as YYYY-MM-DDT12:00:00 to fix timezone consistency
       const formattedDueDate = `${dueDate.getUTCFullYear()}-${String(dueDate.getUTCMonth() + 1).padStart(2, '0')}-${String(dueDate.getUTCDate()).padStart(2, '0')}T12:00:00`;
@@ -1191,6 +1435,7 @@ app.post("/make-server-bd42bc02/contracts", requireAuth, async (c) => {
       clientId,
       totalAmount,
       installments,
+      installmentPeriod: period,
       installmentAmount: parseFloat(installmentAmount.toFixed(2)),
       firstDueDate,
       interestRate: interestRate || 20,
@@ -1237,6 +1482,7 @@ app.put("/make-server-bd42bc02/contracts/:id", requireAuth, async (c) => {
       clientId,
       totalAmount,
       installments,
+      installmentPeriod,
       firstDueDate,
       interestRate,
       lateFeeRate,
@@ -1254,6 +1500,7 @@ app.put("/make-server-bd42bc02/contracts/:id", requireAuth, async (c) => {
     // Update contract fields
     contract.totalAmount = totalAmount || contract.totalAmount;
     contract.installments = installments || contract.installments;
+    contract.installmentPeriod = installmentPeriod || contract.installmentPeriod || 'monthly';
     contract.firstDueDate = firstDueDate || contract.firstDueDate;
     contract.interestRate = interestRate !== undefined ? interestRate : contract.interestRate;
     contract.lateFeeRate = lateFeeRate !== undefined ? lateFeeRate : contract.lateFeeRate;
@@ -1264,9 +1511,26 @@ app.put("/make-server-bd42bc02/contracts/:id", requireAuth, async (c) => {
     const rate = contract.interestRate / 100;
     const totalWithInterest = contract.totalAmount * (1 + rate);
     contract.installmentAmount = totalWithInterest / contract.installments;
+    
+    // Helper function to calculate next due date based on period
+    function calculateNextDueDate(startDate: Date, index: number, period: string): Date {
+      const nextDate = new Date(startDate);
+      
+      if (period === 'daily') {
+        nextDate.setUTCDate(startDate.getUTCDate() + index);
+      } else if (period === 'weekly') {
+        nextDate.setUTCDate(startDate.getUTCDate() + (index * 7));
+      } else { // monthly (default)
+        nextDate.setUTCMonth(startDate.getUTCMonth() + index);
+      }
+      
+      return nextDate;
+    }
 
     // Recalculate installments if total or installments changed
     const installmentsList = [];
+    const period = contract.installmentPeriod || 'monthly';
+    
     for (let i = 0; i < contract.installments; i++) {
       const existingInstallment = contract.installmentsList[i];
       
@@ -1279,7 +1543,8 @@ app.put("/make-server-bd42bc02/contracts/:id", requireAuth, async (c) => {
       const day = parseInt(parts[2]);
       
       // Use Date.UTC to avoid timezone issues - creates date in UTC at noon
-      const dueDate = new Date(Date.UTC(year, month + i, day, 12, 0, 0));
+      const startDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+      const dueDate = calculateNextDueDate(startDate, i, period);
       
       // Format as YYYY-MM-DDT12:00:00 to fix timezone consistency
       const formattedDueDate = `${dueDate.getUTCFullYear()}-${String(dueDate.getUTCMonth() + 1).padStart(2, '0')}-${String(dueDate.getUTCDate()).padStart(2, '0')}T12:00:00`;
@@ -1748,6 +2013,28 @@ app.post("/make-server-bd42bc02/whatsapp/send-location", async (c) => {
 // REMINDERS - DUE INSTALLMENTS
 // ============================================
 
+// Helper function to calculate business days between two dates (excluding weekends)
+function getBusinessDaysBetween(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  let businessDays = 0;
+  const current = new Date(start);
+  
+  while (current < end) {
+    current.setDate(current.getDate() + 1);
+    // Count if it's not a weekend (0 = Sunday, 6 = Saturday)
+    if (current.getDay() !== 0 && current.getDay() !== 6) {
+      businessDays++;
+    }
+  }
+  
+  return businessDays;
+}
+
 app.get("/make-server-bd42bc02/reminders/due-installments", requireAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -1766,6 +2053,8 @@ app.get("/make-server-bd42bc02/reminders/due-installments", requireAuth, async (
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log('[REMINDERS] Today:', today.toISOString());
+    
     const reminders: any[] = [];
     
     // Process each contract
@@ -1782,33 +2071,48 @@ app.get("/make-server-bd42bc02/reminders/due-installments", requireAuth, async (
           continue;
         }
         
-        // DEBUG: Log installment structure
-        console.log('[REMINDERS] Installment data:', {
-          contractId: contract.id,
-          installment: installment,
-          number: installment.number,
-          installmentNumber: installment.installmentNumber
-        });
-        
         // Use parseDateSafe to avoid timezone issues
         const dueDate = parseDateSafe(installment.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         
-        // Calculate days until due
+        // Calculate calendar days until due
         const diffTime = dueDate.getTime() - today.getTime();
         const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        // Only show installments that are due within 15 days or overdue
-        if (daysUntilDue <= 15) {
+        // Calculate business days until due
+        let businessDaysUntilDue = 0;
+        if (daysUntilDue >= 0) {
+          businessDaysUntilDue = getBusinessDaysBetween(today, dueDate);
+        } else {
+          businessDaysUntilDue = daysUntilDue; // Keep negative for overdue
+        }
+        
+        // Only show installments that are:
+        // 1. Overdue (negative days)
+        // 2. Due today (0 days)
+        // 3. Within 3 business days
+        const shouldInclude = daysUntilDue < 0 || // Overdue
+                             daysUntilDue === 0 || // Due today
+                             (daysUntilDue > 0 && businessDaysUntilDue <= 3); // Within 3 business days
+        
+        if (shouldInclude) {
           let status: 'upcoming' | 'due_today' | 'overdue';
           
           if (daysUntilDue < 0) {
             status = 'overdue';
-          } else if (daysUntilDue <= 6) {
+          } else if (daysUntilDue === 0) {
             status = 'due_today';
           } else {
             status = 'upcoming';
           }
+          
+          console.log('[REMINDERS] Including installment:', {
+            client: client.fullName,
+            dueDate: installment.dueDate,
+            daysUntilDue,
+            businessDaysUntilDue,
+            status
+          });
           
           reminders.push({
             id: `${contract.id}-${installment.number}`,
@@ -1822,7 +2126,8 @@ app.get("/make-server-bd42bc02/reminders/due-installments", requireAuth, async (
             amount: installment.amount,
             dueDate: installment.dueDate,
             status,
-            daysUntilDue
+            daysUntilDue,
+            businessDaysUntilDue
           });
         }
       }
@@ -3352,6 +3657,531 @@ app.delete("/make-server-bd42bc02/financial/transactions/:id", requireAuth, asyn
   } catch (error) {
     console.error('[TRANSACTION_DELETE] Error:', error);
     return c.json({ error: 'Error deleting transaction' }, 500);
+  }
+});
+
+// ============================================
+// USER MANAGEMENT ROUTES
+// ============================================
+
+// List all users (admin only)
+app.get("/make-server-bd42bc02/users", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+
+    // Only admins can list users
+    if (user.role !== 'admin') {
+      console.log('[USERS] Access denied for user:', user.email, 'role:', user.role);
+      return c.json({ error: 'Unauthorized. Only admins can list users.' }, 403);
+    }
+
+    console.log('[USERS] Admin user authorized:', user.email);
+    console.log('[USERS] Checking Service Role Key availability...');
+
+    if (!supabaseServiceKey) {
+      console.error('[USERS] SERVICE_ROLE_KEY not configured!');
+      return c.json({
+        error: 'Backend misconfiguration: SERVICE_ROLE_KEY not set. Please configure it in Supabase Dashboard.'
+      }, 500);
+    }
+
+    console.log('[USERS] Service Role Key is configured');
+    console.log('[USERS] Fetching all users from Supabase Auth...');
+
+    // Use Supabase Auth Admin API to list all users
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (authError) {
+      console.error('[USERS] Supabase Auth Admin API error:', {
+        message: authError.message,
+        status: authError.status,
+        code: authError.code
+      });
+      return c.json({
+        error: `Error fetching users: ${authError.message}`,
+        details: authError.code
+      }, 500);
+    }
+
+    if (!authData) {
+      console.error('[USERS] No data returned from Supabase Auth');
+      return c.json({ error: 'No data returned from authentication service' }, 500);
+    }
+
+    // Map Supabase Auth users to our format
+    const users = (authData.users || []).map((authUser: any) => {
+      let userRole = authUser.user_metadata?.role || 'admin';
+      // Convert operator to admin (operators are now admins)
+      if (userRole === 'operator') {
+        userRole = 'admin';
+      }
+      return {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        role: userRole,
+        createdAt: authUser.created_at,
+        lastLogin: authUser.last_sign_in_at,
+      };
+    });
+
+    console.log('[USERS] ✅ Successfully fetched', users.length, 'users');
+
+    // Audit log
+    await logAudit({
+      userId: user.id,
+      action: 'USERS_LISTED',
+      resource: 'users',
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: { count: users.length }
+    });
+
+    return c.json({ users });
+  } catch (error: any) {
+    console.error('[USERS] Unexpected error:', error);
+    console.error('[USERS] Error stack:', error.stack);
+    return c.json({
+      error: 'Error fetching users',
+      message: error.message || 'Unknown error',
+      hint: 'Make sure SERVICE_ROLE_KEY is configured in Supabase Dashboard'
+    }, 500);
+  }
+});
+
+// Create new user (admin only)
+app.post("/make-server-bd42bc02/users", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+
+    // Only admins can create users
+    if (user.role !== 'admin') {
+      return c.json({ error: 'Unauthorized. Only admins can create users.' }, 403);
+    }
+
+    const body = await c.req.json();
+    const { name, email, password, role } = body;
+
+    // Validate input
+    if (!name || !email || !password || !role) {
+      return c.json({ error: 'Missing required fields: name, email, password, role' }, 400);
+    }
+
+    // Convert operator to admin (operators are now admins)
+    let finalRole = role;
+    if (role === 'operator') {
+      console.log('[USERS] Converting operator role to admin');
+      finalRole = 'admin';
+    }
+
+    if (!['admin', 'client'].includes(finalRole) && !['operator'].includes(role)) {
+      return c.json({ error: 'Invalid role. Must be admin or client' }, 400);
+    }
+
+    if (password.length < 6) {
+      return c.json({ error: 'Password must be at least 6 characters' }, 400);
+    }
+
+    console.log('[USERS] Creating new user:', { email, role: finalRole });
+
+    // Create user via Supabase Auth Admin API
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: password,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        name: name.trim(),
+        role: finalRole,
+      },
+    });
+
+    if (authError) {
+      console.error('[USERS] Error creating user:', authError);
+      return c.json({ error: authError.message || 'Error creating user' }, 400);
+    }
+
+    const newUser = {
+      id: authData.user.id,
+      email: authData.user.email || '',
+      name: name.trim(),
+      role: finalRole,
+      createdAt: authData.user.created_at,
+    };
+
+    console.log('[USERS] User created successfully:', newUser.id);
+
+    // Audit log
+    await logAudit({
+      userId: user.id,
+      action: 'USER_CREATED',
+      resource: `user:${newUser.id}`,
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: {
+        email: newUser.email,
+        role: newUser.role,
+        name: newUser.name
+      }
+    });
+
+    return c.json({ user: newUser });
+  } catch (error) {
+    console.error('[USERS] Error:', error);
+    return c.json({ error: 'Error creating user' }, 500);
+  }
+});
+
+// Reset user password (admin only)
+app.post("/make-server-bd42bc02/users/:id/reset-password", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const userId = c.req.param('id');
+
+    // Only admins can reset passwords
+    if (user.role !== 'admin') {
+      return c.json({ error: 'Unauthorized. Only admins can reset passwords.' }, 403);
+    }
+
+    console.log('[USERS] Resetting password for user:', userId);
+
+    // Generate random password
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+    let newPassword = '';
+
+    // Ensure at least one of each type
+    newPassword += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+    newPassword += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+    newPassword += '0123456789'[Math.floor(Math.random() * 10)];
+    newPassword += '!@#$%&*'[Math.floor(Math.random() * 7)];
+
+    // Fill to 12 characters
+    for (let i = newPassword.length; i < 12; i++) {
+      newPassword += charset[Math.floor(Math.random() * charset.length)];
+    }
+
+    // Shuffle
+    newPassword = newPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    // Update password via Supabase Auth Admin API
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { password: newPassword }
+    );
+
+    if (authError) {
+      console.error('[USERS] Error resetting password:', authError);
+      return c.json({ error: authError.message || 'Error resetting password' }, 400);
+    }
+
+    console.log('[USERS] Password reset successfully for user:', userId);
+
+    // Audit log
+    await logAudit({
+      userId: user.id,
+      action: 'USER_PASSWORD_RESET',
+      resource: `user:${userId}`,
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: {
+        targetUserId: userId,
+        email: authData.user.email
+      }
+    });
+
+    return c.json({
+      success: true,
+      newPassword: newPassword,
+      user: {
+        id: authData.user.id,
+        email: authData.user.email
+      }
+    });
+  } catch (error) {
+    console.error('[USERS] Error:', error);
+    return c.json({ error: 'Error resetting password' }, 500);
+  }
+});
+
+// Change own password (any authenticated user)
+app.patch("/make-server-bd42bc02/users/me/password", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json();
+    const { currentPassword, newPassword } = body;
+
+    console.log('[CHANGE_PASSWORD] User requesting password change:', user.email);
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return c.json({ error: 'Senha atual e nova senha são obrigatórias' }, 400);
+    }
+
+    if (newPassword.length < 6) {
+      return c.json({ error: 'A nova senha deve ter no mínimo 6 caracteres' }, 400);
+    }
+
+    if (currentPassword === newPassword) {
+      return c.json({ error: 'A nova senha deve ser diferente da senha atual' }, 400);
+    }
+
+    // Verify current password by attempting to sign in
+    try {
+      const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError || !signInData.user) {
+        console.error('[CHANGE_PASSWORD] Current password verification failed:', signInError?.message);
+        return c.json({ error: 'Senha atual incorreta' }, 401);
+      }
+
+      console.log('[CHANGE_PASSWORD] Current password verified successfully');
+    } catch (verifyError: any) {
+      console.error('[CHANGE_PASSWORD] Error verifying current password:', verifyError);
+      return c.json({ error: 'Erro ao verificar senha atual' }, 500);
+    }
+
+    // Update password using Admin API
+    try {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        user.id,
+        { password: newPassword }
+      );
+
+      if (updateError) {
+        console.error('[CHANGE_PASSWORD] Error updating password:', updateError);
+        return c.json({ error: updateError.message || 'Erro ao atualizar senha' }, 500);
+      }
+
+      console.log('[CHANGE_PASSWORD] ✅ Password updated successfully for user:', user.email);
+
+      // Audit log
+      await logAudit({
+        userId: user.id,
+        action: 'PASSWORD_CHANGED',
+        resource: `user:${user.id}`,
+        ip: c.req.header('x-forwarded-for') || 'unknown',
+        metadata: {
+          email: user.email,
+          changedBy: 'self'
+        }
+      });
+
+      return c.json({
+        success: true,
+        message: 'Senha alterada com sucesso'
+      });
+    } catch (updateError: any) {
+      console.error('[CHANGE_PASSWORD] Unexpected error updating password:', updateError);
+      return c.json({ error: 'Erro ao atualizar senha' }, 500);
+    }
+  } catch (error: any) {
+    console.error('[CHANGE_PASSWORD] Unexpected error:', error);
+    return c.json({ error: 'Erro ao alterar senha' }, 500);
+  }
+});
+
+// Admin: Reset user password (admin only)
+app.post("/make-server-bd42bc02/users/:userId/reset-password", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const { userId } = c.req.param();
+
+    console.log('[RESET_PASSWORD] Admin requesting password reset for user:', userId);
+
+    // Only admins can reset passwords
+    if (user.role !== 'admin') {
+      return c.json({ error: 'Apenas administradores podem resetar senhas' }, 403);
+    }
+
+    // Generate a random secure password (8 characters with numbers and letters)
+    const generatePassword = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let password = '';
+      for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
+
+    const newPassword = generatePassword();
+
+    // Get target user info
+    const { data: targetUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    
+    if (getUserError || !targetUser.user) {
+      console.error('[RESET_PASSWORD] User not found:', userId);
+      return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+
+    // Update password using Admin API
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { password: newPassword }
+    );
+
+    if (updateError) {
+      console.error('[RESET_PASSWORD] Error updating password:', updateError);
+      return c.json({ error: 'Erro ao resetar senha: ' + updateError.message }, 400);
+    }
+
+    console.log('[RESET_PASSWORD] ✅ Password reset successfully for:', targetUser.user.email);
+
+    // Log audit
+    await logAudit({
+      userId: user.id,
+      action: 'PASSWORD_RESET',
+      resource: 'user',
+      resourceId: userId,
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: {
+        targetEmail: targetUser.user.email,
+        resetBy: user.email
+      }
+    });
+
+    return c.json({
+      success: true,
+      message: `Senha resetada com sucesso para ${targetUser.user.email}`,
+      newPassword: newPassword
+    });
+  } catch (error: any) {
+    console.error('[RESET_PASSWORD] Unexpected error:', error);
+    return c.json({ error: 'Erro ao resetar senha' }, 500);
+  }
+});
+
+// Migrate all operators to admin (admin only)
+app.post("/make-server-bd42bc02/users/migrate-operators", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+
+    // Only admins can run migration
+    if (user.role !== 'admin') {
+      return c.json({ error: 'Unauthorized. Only admins can run migrations.' }, 403);
+    }
+
+    console.log('[MIGRATE] Starting operator to admin migration...');
+
+    // Get all users from Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (authError) {
+      console.error('[MIGRATE] Error listing users:', authError);
+      return c.json({ error: 'Error fetching users for migration' }, 500);
+    }
+
+    let migratedCount = 0;
+    const migratedUsers = [];
+
+    for (const authUser of authData.users || []) {
+      const userRole = authUser.user_metadata?.role;
+
+      if (userRole === 'operator') {
+        console.log('[MIGRATE] Converting operator to admin:', authUser.email);
+
+        // Update user metadata to change role to admin
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          authUser.id,
+          {
+            user_metadata: {
+              ...authUser.user_metadata,
+              role: 'admin'
+            }
+          }
+        );
+
+        if (updateError) {
+          console.error('[MIGRATE] Error updating user:', authUser.email, updateError);
+        } else {
+          migratedCount++;
+          migratedUsers.push({
+            id: authUser.id,
+            email: authUser.email,
+            name: authUser.user_metadata?.name
+          });
+
+          // Also update KV store profile if exists
+          const profileData = await kv.get(`user_profile:${authUser.id}`);
+          if (profileData) {
+            const profile = JSON.parse(profileData);
+            profile.role = 'admin';
+            await kv.set(`user_profile:${authUser.id}`, JSON.stringify(profile));
+          }
+        }
+      }
+    }
+
+    console.log('[MIGRATE] ✅ Migration complete. Converted', migratedCount, 'operators to admin');
+
+    // Audit log
+    await logAudit({
+      userId: user.id,
+      action: 'OPERATORS_MIGRATED_TO_ADMIN',
+      resource: 'users',
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: {
+        migratedCount,
+        migratedUsers
+      }
+    });
+
+    return c.json({
+      success: true,
+      migratedCount,
+      migratedUsers,
+      message: `Successfully migrated ${migratedCount} operator(s) to admin`
+    });
+  } catch (error: any) {
+    console.error('[MIGRATE] Unexpected error:', error);
+    return c.json({ error: 'Error running migration' }, 500);
+  }
+});
+
+// Delete user (admin only)
+app.delete("/make-server-bd42bc02/users/:id", requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const userId = c.req.param('id');
+
+    // Only admins can delete users
+    if (user.role !== 'admin') {
+      return c.json({ error: 'Unauthorized. Only admins can delete users.' }, 403);
+    }
+
+    // Cannot delete yourself
+    if (userId === user.id) {
+      return c.json({ error: 'Cannot delete your own user account' }, 400);
+    }
+
+    console.log('[USERS] Deleting user:', userId);
+
+    // Delete user via Supabase Auth Admin API
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (authError) {
+      console.error('[USERS] Error deleting user:', authError);
+      return c.json({ error: authError.message || 'Error deleting user' }, 400);
+    }
+
+    // Also clean up user profile from KV store
+    await kv.del(`user_profile:${userId}`);
+
+    console.log('[USERS] User deleted successfully:', userId);
+
+    // Audit log
+    await logAudit({
+      userId: user.id,
+      action: 'USER_DELETED',
+      resource: `user:${userId}`,
+      ip: c.req.header('x-forwarded-for') || 'unknown',
+      metadata: {
+        targetUserId: userId
+      }
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('[USERS] Error:', error);
+    return c.json({ error: 'Error deleting user' }, 500);
   }
 });
 

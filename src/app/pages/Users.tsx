@@ -56,7 +56,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'operator' | 'client';
+  role: 'admin' | 'client';
   createdAt: string;
   lastLogin?: string;
 }
@@ -87,7 +87,7 @@ export default function Users() {
     name: '',
     email: '',
     password: '',
-    role: 'operator' as 'admin' | 'operator' | 'client',
+    role: 'admin' as 'admin' | 'client',
   });
 
   useEffect(() => {
@@ -105,123 +105,37 @@ export default function Users() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      
-      // Try to fetch from backend
-      try {
-        const data = await apiCall('/users');
-        setUsers(data.users || []);
-        
-        // Show success message with breakdown
-        const adminCount = (data.users || []).filter(u => u.role === 'admin').length;
-        const operatorCount = (data.users || []).filter(u => u.role === 'operator').length;
-        const clientCount = (data.users || []).filter(u => u.role === 'client').length;
-        
-        toast.success(
-          <div>
-            <p className="font-semibold">✅ {data.users?.length || 0} usuários carregados do backend</p>
-            <p className="text-xs mt-1">
-              {adminCount} admin(s) • {operatorCount} operador(es) • {clientCount} cliente(s)
-            </p>
-          </div>,
-          { duration: 4000 }
-        );
-        return;
-      } catch (error: any) {
-        console.error('Error loading users from backend:', error);
-        
-        // If endpoint doesn't exist (404) or any other error, use Supabase Auth directly
-        console.log('[USERS] Backend não disponível, tentando Supabase Auth Admin API...');
-        
-        // Get current user's session to verify admin
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          throw new Error('Sessão expirada. Por favor, faça login novamente.');
-        }
-        
-        // Try to fetch all users from Supabase Auth Admin API
-        try {
-          const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-          
-          if (authError) {
-            console.error('[USERS] Admin API error:', authError);
-            throw authError;
-          }
 
-          if (authData?.users && authData.users.length > 0) {
-            // Map Supabase Auth users to our format
-            const mappedUsers = authData.users.map((authUser: any) => ({
-              id: authUser.id,
-              email: authUser.email || '',
-              name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-              role: authUser.user_metadata?.role || 'operator',
-              createdAt: authUser.created_at,
-              lastLogin: authUser.last_sign_in_at,
-            }));
-            
-            setUsers(mappedUsers);
-            
-            // Show success message with breakdown
-            const adminCount = mappedUsers.filter(u => u.role === 'admin').length;
-            const operatorCount = mappedUsers.filter(u => u.role === 'operator').length;
-            const clientCount = mappedUsers.filter(u => u.role === 'client').length;
-            
-            toast.success(
-              <div>
-                <p className="font-semibold">✅ {mappedUsers.length} usuários carregados do Supabase Auth</p>
-                <p className="text-xs mt-1">
-                  {adminCount} admin(s) • {operatorCount} operador(es) • {clientCount} cliente(s)
-                </p>
-                <p className="text-xs mt-1 text-amber-600">
-                  ℹ️ Backend não disponível. Funcionalidades limitadas.
-                </p>
-              </div>,
-              { duration: 6000 }
-            );
-            return;
-          }
-          
-          // If no users found in Admin API, show only current user
-          console.warn('[USERS] Nenhum usuário encontrado no Supabase Auth');
-          if (currentUser) {
-            setUsers([{
-              id: currentUser.id,
-              email: currentUser.email,
-              name: currentUser.name,
-              role: currentUser.role,
-              createdAt: new Date().toISOString(),
-            }]);
-            toast.warning('Mostrando apenas seu usuário. Outros usuários não foram encontrados.', {
-              duration: 5000
-            });
-          }
-        } catch (adminError: any) {
-          console.error('[USERS] Erro ao acessar Admin API:', adminError);
-          
-          // Final fallback: show only current user
-          if (currentUser) {
-            setUsers([{
-              id: currentUser.id,
-              email: currentUser.email,
-              name: currentUser.name,
-              role: currentUser.role,
-              createdAt: new Date().toISOString(),
-            }]);
-            toast.warning(
-              <div>
-                <p className="font-semibold">⚠️ Acesso limitado ao Admin API</p>
-                <p className="text-xs mt-1">Mostrando apenas seu usuário. Para ver todos os usuários:</p>
-                <p className="text-xs mt-1">1. Configure a Service Role Key no backend</p>
-                <p className="text-xs">2. Deploy a edge function atualizada</p>
-              </div>,
-              { duration: 10000 }
-            );
-          }
-        }
-      }
+      // Fetch from backend
+      const data = await apiCall('/users');
+      setUsers(data.users || []);
+
+      // Show success message with breakdown
+      const adminCount = (data.users || []).filter(u => u.role === 'admin').length;
+      const clientCount = (data.users || []).filter(u => u.role === 'client').length;
+
+      toast.success(
+        <div>
+          <p className="font-semibold">✅ {data.users?.length || 0} usuários carregados</p>
+          <p className="text-xs mt-1">
+            {adminCount} administrador(es) • {clientCount} cliente(s)
+          </p>
+        </div>,
+        { duration: 4000 }
+      );
     } catch (error: any) {
       console.error('Error loading users:', error);
-      toast.error(error.message || 'Erro ao carregar usuários');
-      
+
+      // Show detailed error message
+      toast.error(
+        <div>
+          <p className="font-semibold">❌ Erro ao carregar usuários</p>
+          <p className="text-xs mt-1">{error.message || 'Erro desconhecido'}</p>
+          <p className="text-xs mt-1">Verifique se o backend está configurado corretamente.</p>
+        </div>,
+        { duration: 8000 }
+      );
+
       // Show at least current user on error
       if (currentUser) {
         setUsers([{
@@ -231,6 +145,14 @@ export default function Users() {
           role: currentUser.role,
           createdAt: new Date().toISOString(),
         }]);
+
+        toast.info(
+          <div>
+            <p className="font-semibold">ℹ️ Mostrando apenas seu usuário</p>
+            <p className="text-xs mt-1">O backend precisa estar configurado para listar todos os usuários.</p>
+          </div>,
+          { duration: 5000 }
+        );
       }
     } finally {
       setLoading(false);
@@ -338,7 +260,7 @@ export default function Users() {
       name: '',
       email: '',
       password: generateRandomPassword(),
-      role: 'operator',
+      role: 'admin',
     });
     setCreateDialogOpen(true);
   };
@@ -365,74 +287,44 @@ export default function Users() {
     try {
       setCreating(true);
 
-      // Try to create via backend first
-      try {
-        await apiCall('/users', {
-          method: 'POST',
-          body: JSON.stringify({
-            name: newUser.name.trim(),
-            email: newUser.email.trim().toLowerCase(),
-            password: newUser.password,
-            role: newUser.role,
-          }),
-        });
+      // Create user via backend
+      await apiCall('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newUser.name.trim(),
+          email: newUser.email.trim().toLowerCase(),
+          password: newUser.password,
+          role: newUser.role,
+        }),
+      });
 
-        toast.success(
-          <div>
-            <p className="font-semibold">Usuário criado com sucesso!</p>
-            <p className="text-sm mt-1">E-mail: {newUser.email}</p>
-            <p className="text-sm">Senha: <strong>{newUser.password}</strong></p>
-            <p className="text-xs text-gray-500 mt-1">Anote esta senha e envie ao usuário</p>
-          </div>,
-          { duration: 10000 }
-        );
-      } catch (error: any) {
-        console.error('Error creating user via backend:', error);
-        
-        // If endpoint doesn't exist (404), use Supabase Auth directly
-        if (error.message?.includes('Request failed') || error.message?.includes('404')) {
-          console.log('[USERS] Endpoint not available, creating via Supabase Auth directly...');
-          
-          // Create user via Supabase Auth Admin
-          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email: newUser.email.trim().toLowerCase(),
-            password: newUser.password,
-            email_confirm: true, // Auto-confirm email
-            user_metadata: {
-              name: newUser.name.trim(),
-              role: newUser.role,
-            },
-          });
-
-          if (authError) {
-            throw new Error(authError.message);
-          }
-
-          toast.success(
-            <div>
-              <p className="font-semibold">Usuário criado com sucesso via Supabase!</p>
-              <p className="text-sm mt-1">E-mail: {newUser.email}</p>
-              <p className="text-sm">Senha: <strong>{newUser.password}</strong></p>
-              <p className="text-xs text-gray-500 mt-1">Anote esta senha e envie ao usuário</p>
-            </div>,
-            { duration: 10000 }
-          );
-        } else {
-          throw error;
-        }
-      }
+      toast.success(
+        <div>
+          <p className="font-semibold">✅ Usuário criado com sucesso!</p>
+          <p className="text-sm mt-1">E-mail: {newUser.email}</p>
+          <p className="text-sm">Senha: <strong>{newUser.password}</strong></p>
+          <p className="text-xs text-gray-500 mt-1">⚠️ Anote esta senha e envie ao usuário</p>
+        </div>,
+        { duration: 10000 }
+      );
 
       setCreateDialogOpen(false);
       setNewUser({
         name: '',
         email: '',
         password: '',
-        role: 'operator',
+        role: 'admin',
       });
       loadUsers();
     } catch (error: any) {
       console.error('Error creating user:', error);
-      toast.error(error.message || 'Erro ao criar usuário');
+      toast.error(
+        <div>
+          <p className="font-semibold">❌ Erro ao criar usuário</p>
+          <p className="text-xs mt-1">{error.message || 'Erro desconhecido'}</p>
+        </div>,
+        { duration: 8000 }
+      );
     } finally {
       setCreating(false);
     }
@@ -442,8 +334,6 @@ export default function Users() {
     switch (role) {
       case 'admin':
         return <Badge className="bg-red-600 text-white"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
-      case 'operator':
-        return <Badge className="bg-blue-600 text-white"><UserCheck className="h-3 w-3 mr-1" />Operador</Badge>;
       case 'client':
         return <Badge className="bg-green-600 text-white"><UsersIcon className="h-3 w-3 mr-1" />Cliente</Badge>;
       default:
@@ -501,7 +391,7 @@ export default function Users() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">Total de Usuários</CardTitle>
@@ -517,16 +407,6 @@ export default function Users() {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
               {users.filter(u => u.role === 'admin').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Operadores</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.role === 'operator').length}
             </div>
           </CardContent>
         </Card>
@@ -571,7 +451,6 @@ export default function Users() {
               >
                 <option value="all">Todos os tipos</option>
                 <option value="admin">Administradores</option>
-                <option value="operator">Operadores</option>
                 <option value="client">Clientes</option>
               </select>
             </div>
@@ -589,74 +468,67 @@ export default function Users() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">E-mail</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Cadastrado em</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Ações</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Nome</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Tipo</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Cadastro</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700 text-xs">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-500">
-                      <UserX className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                      Nenhum usuário encontrado
+                    <td colSpan={4} className="text-center py-8 text-gray-500">
+                      <UserX className="h-10 w-10 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">Nenhum usuário encontrado</p>
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-white font-semibold">
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-gray-900">{user.name}</span>
-                          {user.id === currentUser?.id && (
-                            <Badge variant="outline" className="text-xs">Você</Badge>
-                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium text-gray-900 truncate">{user.name}</span>
+                            <span className="text-gray-600 text-xs truncate">{user.email}</span>
+                            {user.id === currentUser?.id && (
+                              <Badge variant="outline" className="text-[10px] w-fit px-1 py-0 mt-0.5">Você</Badge>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Mail className="h-4 w-4" />
-                          {user.email}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         {getRoleBadge(user.role)}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-gray-600 text-sm">
-                          <Calendar className="h-4 w-4" />
-                          {formatDate(user.createdAt)}
-                        </div>
+                      <td className="py-2 px-3">
+                        <span className="text-gray-600 text-xs whitespace-nowrap">{formatDate(user.createdAt)}</span>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-2 px-3 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                              <MoreVertical className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={() => handleResetPasswordClick(user)}
-                              className="cursor-pointer"
+                              className="cursor-pointer text-sm"
                             >
-                              <KeyRound className="h-4 w-4 mr-2" />
+                              <KeyRound className="h-3.5 w-3.5 mr-2" />
                               Resetar Senha
                             </DropdownMenuItem>
                             {user.id !== currentUser?.id && (
                               <DropdownMenuItem
                                 onClick={() => handleDeleteClick(user)}
-                                className="cursor-pointer text-red-600 focus:text-red-600"
+                                className="cursor-pointer text-red-600 focus:text-red-600 text-sm"
                               >
-                                <Trash2 className="h-4 w-4 mr-2" />
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
                                 Excluir Usuário
                               </DropdownMenuItem>
                             )}
@@ -680,18 +552,23 @@ export default function Users() {
               <AlertTriangle className="h-5 w-5 text-red-600" />
               Confirmar Exclusão
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o usuário <strong>{userToDelete?.name}</strong> ({userToDelete?.email})?
-              <br /><br />
-              <span className="text-red-600 font-semibold">Esta ação não pode ser desfeita!</span>
-              {userToDelete?.role === 'client' && (
-                <Alert className="mt-4 border-amber-200 bg-amber-50">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-900 text-sm">
-                    <strong>Atenção:</strong> Ao excluir um cliente, todos os seus contratos e dados serão mantidos no sistema, mas ele perderá o acesso ao portal do cliente.
-                  </AlertDescription>
-                </Alert>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Tem certeza que deseja excluir o usuário <strong>{userToDelete?.name}</strong> ({userToDelete?.email})?
+                </p>
+                <p className="mt-4">
+                  <span className="text-red-600 font-semibold">Esta ação não pode ser desfeita!</span>
+                </p>
+                {userToDelete?.role === 'client' && (
+                  <Alert className="mt-4 border-amber-200 bg-amber-50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-900 text-sm">
+                      <strong>Atenção:</strong> Ao excluir um cliente, todos os seus contratos e dados serão mantidos no sistema, mas ele perderá o acesso ao portal do cliente.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -715,16 +592,21 @@ export default function Users() {
               <KeyRound className="h-5 w-5 text-blue-600" />
               Resetar Senha
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja resetar a senha do usuário <strong>{userToReset?.name}</strong> ({userToReset?.email})?
-              <br /><br />
-              Uma nova senha temporária será gerada automaticamente. Você deverá anotar e enviar esta senha ao usuário.
-              <Alert className="mt-4 border-blue-200 bg-blue-50">
-                <CheckCircle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-900 text-sm">
-                  <strong>Importante:</strong> A nova senha será exibida apenas uma vez após a confirmação. Anote-a com cuidado.
-                </AlertDescription>
-              </Alert>
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  Deseja resetar a senha do usuário <strong>{userToReset?.name}</strong> ({userToReset?.email})?
+                </p>
+                <p className="mt-4">
+                  Uma nova senha temporária será gerada automaticamente. Você deverá anotar e enviar esta senha ao usuário.
+                </p>
+                <Alert className="mt-4 border-blue-200 bg-blue-50">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-900 text-sm">
+                    <strong>Importante:</strong> A nova senha será exibida apenas uma vez após a confirmação. Anote-a com cuidado.
+                  </AlertDescription>
+                </Alert>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -789,13 +671,11 @@ export default function Users() {
                 disabled={creating}
                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <option value="operator">Operador</option>
                 <option value="admin">Administrador</option>
                 <option value="client">Cliente</option>
               </select>
               <p className="text-xs text-gray-500">
-                {newUser.role === 'admin' && '⚠️ Terá acesso total ao sistema'}
-                {newUser.role === 'operator' && 'Poderá gerenciar clientes e contratos'}
+                {newUser.role === 'admin' && '⚠️ Terá acesso total ao sistema (gerenciar clientes, contratos e usuários)'}
                 {newUser.role === 'client' && 'Acesso apenas ao portal do cliente'}
               </p>
             </div>

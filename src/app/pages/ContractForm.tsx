@@ -26,6 +26,7 @@ interface ContractFormData {
   clientId: string;
   totalAmount: number;
   installments: number;
+  installmentPeriod: 'daily' | 'weekly' | 'monthly';
   firstDueDate: string;
   interestRate: number;
   lateFeeRate: number;
@@ -41,9 +42,9 @@ export default function ContractForm() {
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ContractFormData>({
     defaultValues: {
-      interestRate: 20,
       lateFeeRate: 10,
       clientId: preselectedClientId || '',
+      installmentPeriod: 'monthly',
     },
   });
 
@@ -52,6 +53,7 @@ export default function ContractForm() {
   const [clients, setClients] = useState<any[]>([]);
   const [contract, setContract] = useState<any>(null);
   const [selectedClientId, setSelectedClientId] = useState(preselectedClientId || '');
+  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -78,11 +80,13 @@ export default function ContractForm() {
       setValue('clientId', contractData.clientId);
       setValue('totalAmount', contractData.totalAmount);
       setValue('installments', contractData.installments);
+      setValue('installmentPeriod', contractData.installmentPeriod || 'monthly');
       setValue('firstDueDate', contractData.firstDueDate.split('T')[0]);
       setValue('interestRate', contractData.interestRate);
       setValue('lateFeeRate', contractData.lateFeeRate);
       setValue('description', contractData.description || '');
       setSelectedClientId(contractData.clientId);
+      setSelectedPeriod(contractData.installmentPeriod || 'monthly');
     } catch (error) {
       console.error('Error loading contract:', error);
       toast.error('Erro ao carregar contrato');
@@ -109,6 +113,7 @@ export default function ContractForm() {
         clientId: data.clientId,
         totalAmount: parseFloat(String(data.totalAmount)),
         installments: parseInt(String(data.installments)),
+        installmentPeriod: data.installmentPeriod,
         firstDueDate: data.firstDueDate, // Data no formato YYYY-MM-DD
         interestRate: parseFloat(String(data.interestRate || 0)),
         lateFeeRate: parseFloat(String(data.lateFeeRate || 0)),
@@ -265,8 +270,7 @@ export default function ContractForm() {
                     required: 'Campo obrigatório',
                     min: { value: 0, message: 'Valor deve ser positivo' },
                   })}
-                  placeholder="10000.00"
-                  onChange={(e) => {
+                    onChange={(e) => {
                     register('totalAmount').onChange(e);
                     calculateInterestFromInstallment();
                   }}
@@ -285,8 +289,7 @@ export default function ContractForm() {
                     required: 'Campo obrigatório',
                     min: { value: 1, message: 'Mínimo 1 parcela' },
                   })}
-                  placeholder="12"
-                  onChange={(e) => {
+                    onChange={(e) => {
                     register('installments').onChange(e);
                     calculateInterestFromInstallment();
                   }}
@@ -294,6 +297,29 @@ export default function ContractForm() {
                 {errors.installments && (
                   <p className="text-sm text-red-600">{errors.installments.message}</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="installmentPeriod">Periodicidade das Parcelas *</Label>
+                <Select
+                  value={selectedPeriod}
+                  onValueChange={(value) => {
+                    setValue('installmentPeriod', value as 'daily' | 'weekly' | 'monthly');
+                    setSelectedPeriod(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a periodicidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Diária</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Define o intervalo entre os vencimentos das parcelas
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -305,7 +331,6 @@ export default function ContractForm() {
                   id="installmentValue"
                   type="number"
                   step="0.01"
-                  placeholder="1000.00"
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value) {
@@ -336,8 +361,7 @@ export default function ContractForm() {
                   id="interestRate"
                   type="number"
                   step="0.01"
-                  {...register('interestRate')}
-                  placeholder="2.00"
+                  {...register('interestRate')}                  
                 />
                 <p className="text-xs text-gray-500">
                   Será calculada automaticamente se você informar o valor da parcela
@@ -350,9 +374,8 @@ export default function ContractForm() {
                   id="lateFeeRate"
                   type="number"
                   step="0.01"
-                  {...register('lateFeeRate')}
-                  placeholder="10.00"
-                />
+                  {...register('lateFeeRate')}                  
+               />
               </div>
             </div>
 

@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
-import { Button } from '../components/ui/button';
+import { Link, useNavigate } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { User, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { projectId } from '/utils/supabase/info';
+import { Button } from '../components/ui/button';
+import { User, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
+import { toast } from 'sonner';
+import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 export default function ClientPortalLogin() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -29,55 +32,50 @@ export default function ClientPortalLogin() {
     setLoading(true);
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (signInError) {
-        throw new Error(signInError.message);
-      }
-
-      if (!data.session?.access_token) {
-        throw new Error('Erro ao fazer login');
-      }
-
-      // Verify user role is 'client'
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-bd42bc02/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${data.session.access_token}`,
-        },
-      });
-
-      const userData = await response.json();
-
-      if (!response.ok || userData.user.role !== 'client') {
-        await supabase.auth.signOut();
-        throw new Error('Acesso negado. Esta área é exclusiva para clientes.');
-      }
-
-      // Store token
-      localStorage.setItem('client_access_token', data.session.access_token);
+      console.log('[CLIENT_PORTAL_LOGIN] Attempting login for:', formData.email);
+      await signIn(formData.email, formData.password);
       
-      navigate('/client-portal/dashboard');
+      console.log('[CLIENT_PORTAL_LOGIN] Login successful, navigating to portal');
+      // The AuthContext will handle role verification
+      // Navigate to the client portal
+      navigate('/client-portal');
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      console.error('[CLIENT_PORTAL_LOGIN] Login failed');
+      console.error('[CLIENT_PORTAL_LOGIN] Error details:', err);
+      console.error('[CLIENT_PORTAL_LOGIN] Error message:', err.message);
+      console.error('[CLIENT_PORTAL_LOGIN] Error code:', err.code);
+      
+      let errorMessage = err.message || 'Erro ao fazer login';
+      
+      // Provide better error messages
+      if (err.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos. Verifique seus dados e tente novamente.';
+      } else if (err.message?.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
+      } else if (err.message?.includes('Too many requests')) {
+        errorMessage = 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-2 border-amber-400/50 shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
-              <User className="h-8 w-8 text-white" />
-            </div>
+            <img 
+              src={logo} 
+              alt="ALEMÃO.CREFISA" 
+              className="h-20 w-20 object-contain rounded-full drop-shadow-lg"
+            />
           </div>
-          <CardTitle className="text-2xl">Portal do Cliente</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl md:text-3xl text-gray-900">Portal do Cliente</CardTitle>
+          <CardDescription className="text-base">
             Acesse sua área exclusiva para visualizar seus dados e contratos
           </CardDescription>
         </CardHeader>
@@ -124,14 +122,18 @@ export default function ClientPortalLogin() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-emerald-600 hover:bg-emerald-700" 
+              disabled={loading}
+            >
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
 
             <div className="text-center space-y-2">
               <div className="text-sm">
                 <span className="text-gray-600">Não tem uma conta? </span>
-                <Link to="/client-portal/signup" className="text-blue-600 hover:underline">
+                <Link to="/client-portal/signup" className="text-emerald-600 hover:underline font-medium">
                   Cadastre-se
                 </Link>
               </div>

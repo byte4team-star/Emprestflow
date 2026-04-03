@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Lock, Mail, User, BarChart3, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 const apiUrl = `https://${projectId}.supabase.co/functions/v1/make-server-bd42bc02`;
 
@@ -18,10 +19,10 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [accessCode, setAccessCode] = useState(''); // Security code for admin/operator signup
+  const [accessCode, setAccessCode] = useState(''); // Security code for admin signup
   const [showAccessCode, setShowAccessCode] = useState(false); // Toggle visibility
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isClientLogin, setIsClientLogin] = useState(false);
+  const [isClientLogin, setIsClientLogin] = useState(true); // 🔐 Portal do Cliente como padrão
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
@@ -97,16 +98,16 @@ export default function Login() {
 
     try {
       if (isSignUp) {
-        // Validate access code for admin/operator signup
+        // Validate access code for admin signup
         if (!isClientLogin && !accessCode) {
-          setError('O código de acesso é obrigatório para criar conta de administrador/operador.');
+          setError('O código de acesso é obrigatório para criar conta de administrador.');
           toast.error('Por favor, informe o código de acesso fornecido pela empresa.');
           setLoading(false);
           return;
         }
 
         // Pass 'client' role if user is registering in client mode
-        const role = isClientLogin ? 'client' : 'operator';
+        const role = isClientLogin ? 'client' : 'admin';
         await signUp(email, password, name, role, accessCode);
         toast.success('Conta criada com sucesso!');
       } else {
@@ -169,7 +170,7 @@ export default function Login() {
         <CardHeader className="space-y-1 text-center bg-gradient-to-r from-emerald-50 to-amber-50/30 rounded-t-lg">
           {/* Logo dentro do modal */}
           <div className="flex items-center justify-center gap-3 mb-2">
-            <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
+            <img src={logo} alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
             <div className="text-left">
               <h1 className="text-xl font-bold text-amber-600">ALEMÃO.CREFISA</h1>
               <p className="text-xs text-emerald-700">Sistema de Gestão</p>
@@ -193,7 +194,7 @@ export default function Login() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              👤 Admin/Operador
+              👤 Administrador
             </button>
             <button
               type="button"
@@ -210,55 +211,7 @@ export default function Login() {
 
           {/* Show default admin credentials when in login mode */}
           {!isSignUp && !isClientLogin && (
-            <Alert className="mb-4 bg-blue-50 border-blue-300">
-              <AlertDescription className="text-xs">
-                <div className="font-semibold mb-2 text-blue-900">🔑 Credenciais Padrão do Administrador:</div>
-                <div className="space-y-1 font-mono text-blue-800">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">E-mail:</span>
-                    <code className="bg-blue-100 px-2 py-0.5 rounded font-semibold">admin@empresa.com</code>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('admin@empresa.com');
-                        toast.success('E-mail preenchido!');
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline ml-auto"
-                    >
-                      ✨ Usar
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">Senha:</span>
-                    <code className="bg-blue-100 px-2 py-0.5 rounded font-semibold">Admin@123456</code>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPassword('Admin@123456');
-                        toast.success('Senha preenchida!');
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline ml-auto"
-                    >
-                      ✨ Usar
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('admin@empresa.com');
-                      setPassword('Admin@123456');
-                      toast.success('Credenciais preenchidas! Clique em Entrar.');
-                    }}
-                    className="w-full mt-2 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    ⚡ Preencher Ambos
-                  </button>
-                </div>
-                <div className="mt-2 text-[10px] text-blue-700 italic">
-                  ⚠️ Altere a senha padrão após o primeiro login por segurança
-                </div>
-              </AlertDescription>
-            </Alert>
+            null
           )}
 
           {/* Show registration mode when signing up */}
@@ -266,12 +219,12 @@ export default function Login() {
             <Alert className="mb-4 bg-emerald-50 border-emerald-300">
               <AlertDescription className="text-xs">
                 <div className="font-semibold mb-1 text-emerald-900">
-                  {isClientLogin ? '👥 Cadastro de Cliente' : '⚙️ Cadastro de Operador'}
+                  {isClientLogin ? '👥 Cadastro de Cliente' : '⚙️ Cadastro de Administrador'}
                 </div>
                 <div className="text-emerald-700">
-                  {isClientLogin 
+                  {isClientLogin
                     ? 'Você está criando uma conta de cliente com acesso restrito aos seus próprios dados.'
-                    : 'Você está criando uma conta de operador com acesso ao painel administrativo.'}
+                    : 'Você está criando uma conta de administrador com acesso total ao sistema.'}
                 </div>
               </AlertDescription>
             </Alert>
@@ -366,12 +319,10 @@ export default function Login() {
               </div>
               {!isSignUp && (
                 <div className="flex justify-end">
-                  <Link to="/forgot-password">
-                    <Button variant="link" className="text-xs p-0 h-auto text-blue-600 hover:text-blue-800">
-                      Esqueceu a senha?
-                    </Button>
-                  </Link>
-                </div>
+                   <p className="text-xs p-0 h-auto text-blue-600 hover:text-blue-800 text-center w-full">
+                      Esqueceu a senha? Peça para um administrador resetá-la.
+                    </p>
+                 </div>
               )}
             </div>
 
@@ -386,7 +337,7 @@ export default function Login() {
                   <Input
                     id="accessCode"
                     type={showAccessCode ? "text" : "password"}
-                    placeholder="Digite: emprestflow26"
+                    placeholder="Digite a senha de permissão"
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value.trim())}
                     className="pl-10 pr-20 border-2 border-amber-400 focus:border-amber-600"
@@ -401,35 +352,10 @@ export default function Login() {
                   </button>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAccessCode('emprestflow26');
-                      setShowAccessCode(true);
-                      toast.success('Código preenchido automaticamente!');
-                    }}
-                    className="text-xs text-emerald-700 hover:text-emerald-900 font-medium underline"
-                  >
-                    ✨ Preencher automaticamente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText('emprestflow26');
-                      toast.success('Código copiado!');
-                    }}
-                    className="text-xs text-gray-600 hover:text-gray-900 underline"
-                  >
-                    📋 Copiar código
-                  </button>
+                  
+                  
                 </div>
-                <Alert className="bg-amber-50 border-amber-400">
-                  <AlertDescription className="text-xs text-amber-900">
-                    <div className="font-bold mb-1">🔑 Código de Segurança</div>
-                    <div>O código correto é: <code className="bg-amber-200 px-2 py-0.5 rounded font-mono font-bold">emprestflow26</code></div>
-                    <div className="mt-1 text-[10px] italic">Digite exatamente como mostrado acima (tudo minúsculo, sem espaços)</div>
-                  </AlertDescription>
-                </Alert>
+                
               </div>
             )}
 
@@ -450,13 +376,7 @@ export default function Login() {
             </div>
 
             <div className="text-center text-sm">
-              <button
-                type="button"
-                onClick={() => navigate('/public-diagnostic')}
-                className="text-gray-600 hover:underline text-xs"
-              >
-                🔧 Diagnóstico e Configuração
-              </button>
+              
             </div>
           </form>
 
