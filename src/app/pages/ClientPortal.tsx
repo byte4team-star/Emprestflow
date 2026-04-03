@@ -42,7 +42,6 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 interface ClientData {
   id: string;
@@ -343,7 +342,7 @@ export default function ClientPortal() {
             <div className="flex items-center gap-3">
               <div className="bg-white rounded-full p-1 shadow-md ring-1 ring-white/50">
                 <img 
-                  src={logo} 
+                  src="/logo.png" 
                   alt="ALEMÃO.CREFISA" 
                   className="h-12 w-12 object-contain"
                 />
