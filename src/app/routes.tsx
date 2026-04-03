@@ -32,10 +32,6 @@ export const router = createBrowserRouter([
         Component: Login,
       },
       {
-        path: "/forgot-password",
-        Component: ForgotPassword,
-      },
-      {
         path: "/reset-password",
         Component: ResetPassword,
       },
