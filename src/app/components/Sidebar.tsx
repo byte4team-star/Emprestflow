@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { Home, Users, FileText, Shield, DollarSign, MessageSquare, X, UserCog, KeyRound } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
-import logo from 'figma:asset/6c9e654d548e97a4191a24d7f1bce9d77b7a1b25.png';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -52,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="p-6 border-b-2 border-amber-500/30">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
+            <img src="/logo.png" alt="ALEMÃO.CREFISA" className="h-12 w-12 object-contain rounded-full drop-shadow-md" />
             <div>
               <h1 className="text-xl font-bold text-amber-400">ALEMÃO.CREFISA</h1>
               <p className="text-xs text-emerald-100">Sistema de Gestão</p>
