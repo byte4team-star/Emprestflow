@@ -388,7 +388,7 @@ export default function DueReminders() {
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Total 
+              Total de Lembretes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -664,11 +664,50 @@ export default function DueReminders() {
       )}
 
       {/* Help Card */}
-      
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-blue-900">💡 Dica</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-blue-800">
+          <p className="mb-2">
+            <strong>Como funcionam os lembretes:</strong>
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-2">
+            <li><strong className="text-blue-600">Próximos (1-3 dias úteis):</strong> Parcelas que vencem nos próximos 3 dias úteis (excluindo sábados e domingos)</li>
+            <li><strong className="text-amber-600">Vence Hoje:</strong> Parcelas que vencem no dia atual</li>
+            <li><strong className="text-red-600">Atrasados:</strong> Parcelas com vencimento passado</li>
+          </ul>
+          <p className="mt-3 text-xs text-blue-700">
+            💼 Clique nos cards de estatísticas para filtrar rapidamente por categoria
+          </p>
+        </CardContent>
+      </Card>
 
       {/* WhatsApp Info Card */}
       {filteredReminders.length > 0 && (
-        null
+        <Card className="bg-green-50 border-green-200">
+          <CardHeader>
+            <CardTitle className="text-green-900 flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Envio de Mensagens WhatsApp
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-green-800">
+            <p className="mb-2">
+              <strong>Como usar:</strong>
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Clique em <strong>"Enviar WhatsApp"</strong> em cada lembrete para envio individual</li>
+              <li>Use <strong>"Enviar para Todos"</strong> no topo para envio em massa (intervalo de 2s entre cada)</li>
+              <li>Escolha entre 4 templates prontos ou personalize sua mensagem</li>
+              <li>Variáveis disponíveis: {'{nome}'}, {'{valor}'}, {'{data_vencimento}'}, {'{parcela}'}, {'{contrato}'}, {'{dias_atraso}'}</li>
+              <li>As mensagens abrem o WhatsApp Web com o texto preenchido automaticamente</li>
+            </ul>
+            <p className="mt-3 text-xs text-green-700">
+              ✨ Os templates são selecionados automaticamente baseados no status do lembrete
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* WhatsApp Modal */}

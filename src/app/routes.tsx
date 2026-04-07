@@ -21,6 +21,7 @@ import ClientPortalFirstAccess from "./pages/ClientPortalFirstAccess";
 import DueReminders from "./pages/DueReminders";
 import Security from "./pages/Security";
 import Users from "./pages/Users";
+import ChangePassword from "./pages/ChangePassword";
 import AuthDebug from "./pages/AuthDebug";
 
 export const router = createBrowserRouter([
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
           { path: "reminders", Component: DueReminders },
           { path: "security", Component: Security },
           { path: "users", Component: Users },
+          { path: "change-password", Component: ChangePassword },
           { path: "*", Component: NotFound },
         ],
       },

@@ -13,7 +13,7 @@ export function addHealthRoutes(app: any) {
   // Detailed health check
   app.get('/make-server-bd42bc02/health/detailed', (c: any) => {
     const hasSupabaseUrl = !!Deno.env.get('SUPABASE_URL');
-    const hasServiceKey = !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const hasServiceKey = !!Deno.env.get('SERVICE_ROLE_KEY');
     const hasAnonKey = !!Deno.env.get('SUPABASE_ANON_KEY');
     const hasEvolutionUrl = !!Deno.env.get('EVOLUTION_API_URL');
     const hasEvolutionKey = !!Deno.env.get('EVOLUTION_API_KEY');

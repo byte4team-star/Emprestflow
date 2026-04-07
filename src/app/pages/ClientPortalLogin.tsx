@@ -68,7 +68,7 @@ export default function ClientPortalLogin() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src="/logo.png"
+              src="/logo.png" 
               alt="ALEMÃO.CREFISA" 
               className="h-20 w-20 object-contain rounded-full drop-shadow-lg"
             />

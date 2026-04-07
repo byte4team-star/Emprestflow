@@ -1,0 +1,194 @@
+ Running frontend commit 9ddb06e97df71e299d0733644813b89ea0600aa2
+ Statsig is not ready to log exposures, will retry in 1 seconds
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+ Loaded 65 scripts (7346628b), 65 from cache (7346628b)
+ [Livegraph] Connected 2026-04-01T05:36:43.469Z.
+ [import] git: 6d6488cf7900780e0f129247681c41597b7063db, stamp: 9A62C9024417C038
+ [Sprigma] Attempted to track event with sampling: Object
+ [Sprigma] Attempted to track event with sampling: Object
+(índice):1  Failed to load resource: net::ERR_FAILED
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: <URL>
+ Autosave Changes not available or already claimed by another tab undefined
+ The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127
+initialize @ 9697-6280fcd4741a436e.min.js.br:7
+ [Fullscreen] Booting... (emscripten version 4.0.21)
+ [GPU] graphicsAPI:"WebGPU", vendor:"Google Inc. (Intel)" renderer:"ANGLE (Intel, Intel(R) UHD Graphics (0x00008A56) Direct3D11 vs_5_0 ps_5_0, D3D11)" deviceArchitecture:"gen-11" deviceDescription:"" webGPUDevice:"" webGPUVendor:"intel" bindings:"emdawnwebgpu"
+ [Fullscreen] Ready in 667.1ms
+ [FullscreenApp] calling setEditorTheme and setting preference light
+ [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2
+ [FullscreenApp] calling setEditorTheme and setting preference light
+/api/plans/d701f1d6-f1fe-469a-a88a-a42bf3eb5e86/npm_private_registry/scopes:1  Failed to load resource: the server responded with a status of 404 ()
+ [MultiplayerSession] Joining file version 106 (initial load)
+ Migration succeeded: context: fullscreen_migrate_SceneGraphManager, version: 106, duration: 0ms.
+ [Fullscreen] loadtime=3.73s maxmem=69839988
+/make/4O9UoYY3t4Ahc2Z6LnWPMf/Sistema-de-Controle-e-Cobran%C3%A7a?p=f&t=SY3R5MuCHTD5b802-0:1 Access to image at 'https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1' from origin 'https://www.figma.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1:1  Failed to load resource: net::ERR_FAILED
+ [devtools] Initialized LS
+/api/make/4O9UoYY3t4Ahc2Z6LnWPMf/cached_preview_urls?source_code_hash=b70d66779fa81a67073fa3e6d1f5c6ca54a75151:1  Failed to load resource: the server responded with a status of 404 ()
+ [devtools] Initialized LS
+ Sentry event id: 5e5e1bd5bf824ea5a2685349401aad3b
+ Sentry event id: 3a129e6ff4f44bd2a90a08a99a5ad5cb
+ Sentry event id: d8ea770d6213432e805cef59d80c9ed5
+/api/integrations/supabase/4O9UoYY3t4Ahc2Z6LnWPMf/edge_functions/make-server/deploy:1  Failed to load resource: the server responded with a status of 403 ()
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ Sentry event id: 46e71dbaa9db426fba871aa7470c0b0c
+ Sentry event id: 545acf8bb22c45ca848d52540e1c006f
+ Sentry event id: 7399716337674f8a85a3c3da95502471
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ Too many elapsed hits of react since last report
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/a99d95cd11bb37f641d61b7e037477802ad9015421ad1d5fbb6454a6d0e20b3b:1  Failed to load resource: the server responded with a status of 404 ()
+ Failed to fetch snapshot files: 
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+/api/integrations/supabase/4O9UoYY3t4Ahc2Z6LnWPMf/edge_functions/make-server/deploy:1  Failed to load resource: the server responded with a status of 403 ()
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/c84a33127971841b4fb9b30a61c1c96ff12bc5c9ce639efca0ed3696bd9868dd:1  Failed to load resource: the server responded with a status of 404 ()
+ Failed to fetch snapshot files: 
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/ea087cb30271816d5fbe541333cf77ec23bdc8987901cbe20372096b3b82cdf3:1  Failed to load resource: the server responded with a status of 404 ()
+ Failed to fetch snapshot files: 
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+/api/integrations/supabase/4O9UoYY3t4Ahc2Z6LnWPMf/edge_functions/make-server/deploy:1  Failed to load resource: the server responded with a status of 403 ()
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression=&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2&reconnect-key=e616cb8ed62ecb5b056c2cd874cbc4709f661553&reconnect-sequence-number=2803&initialFileVersion=106&previousLoadMode=full&incremental-loading-validation=0
+ [MultiplayerSession] Joining file version 106 (skip_reload reconnect)
+/make/4O9UoYY3t4Ahc2Z6LnWPMf/Sistema-de-Controle-e-Cobran%C3%A7a?p=f&t=SY3R5MuCHTD5b802-0&preview-route=%2Fclients%2Fclient_1774933494588_bzt8686t9:1 Access to image at 'https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1' from origin 'https://www.figma.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1:1  Failed to load resource: net::ERR_FAILED
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/06d94ce63617274220fccaa31bf1981c38c0603ee1e771346b97b0d31539e98b:1  Failed to load resource: the server responded with a status of 404 ()
+ Failed to fetch snapshot files: 
+(anônimo) @ vendor-core-83c17265…588e9e.min.js.br:54
+/api/integrations/supabase/4O9UoYY3t4Ahc2Z6LnWPMf/edge_functions/make-server/deploy:1  Failed to load resource: the server responded with a status of 403 ()
+ [devtools] Initialized LS
+ [devtools] Initialized LS
+ [Sprigma] Attempted to track event with sampling: Object
+ [Sprigma] Attempted to track event with sampling: Object
+/files/team/1580775366752837845/project/514535631?fuid=1621044682112388368:1 [Intervention]Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113
+vendor-core-83c17265f2588e9e.min.js.br:54 [FullscreenApp] calling setEditorTheme and setting preference light
+vendor-core-83c17265f2588e9e.min.js.br:54 Autosave Changes not available or already claimed by another tab undefined
+vendor-core-83c17265f2588e9e.min.js.br:54 [FullscreenApp] calling setEditorTheme and setting preference light
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2
+vendor-core-83c17265f2588e9e.min.js.br:54 [FullscreenApp] calling setEditorTheme and setting preference light
+/api/plans/d701f1d6-f1fe-469a-a88a-a42bf3eb5e86/npm_private_registry/scopes:1  Failed to load resource: the server responded with a status of 404 ()
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] Joining file version 106 (initial load)
+/make/4O9UoYY3t4Ahc2Z6LnWPMf/Sistema-de-Controle-e-Cobran%C3%A7a?t=SY3R5MuCHTD5b802-0:1 Access to image at 'https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1' from origin 'https://www.figma.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1:1  Failed to load resource: net::ERR_FAILED
+vendor-core-83c17265f2588e9e.min.js.br:54 [devtools] Initialized LS
+vendor-core-83c17265f2588e9e.min.js.br:54 [Fullscreen] loadtime=3.00s maxmem=91264024
+vendor-core-83c17265f2588e9e.min.js.br:54 [devtools] Initialized LS
+/api/make/4O9UoYY3t4Ahc2Z6LnWPMf/cached_preview_urls?source_code_hash=3121e9b739b94161af4bb6d9b9cd2ceb402a415b:1  Failed to load resource: the server responded with a status of 404 ()
+af5379ec-939f-4dd5-8f92-51b9c7d27a5a-v2-figmaiframepreview.figma.site/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o
+af5379ec-939f-4dd5-8f92-51b9c7d27a5a-v2-figmaiframepreview.figma.site/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o
+af5379ec-939f-4dd5-8f92-51b9c7d27a5a-v2-figmaiframepreview.figma.site/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/b89629e6546a27cc71cf37d58c322fce31eae93a2b2e82edf89f11418772d578:1  Failed to load resource: the server responded with a status of 404 ()
+vendor-core-83c17265f2588e9e.min.js.br:54 Failed to fetch snapshot files: E: XHR for "/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/b89629e6546a27cc71cf37d58c322fce31eae93a2b2e82edf89f11418772d578" failed with status 404
+    at w (8638-d4ddfd6adcb660b4.min.js.br:1403:13936)
+    at async Object.k [as get] (8638-d4ddfd6adcb660b4.min.js.br:1403:14319)
+    at async 6804-8b3d38998950b27d.min.js.br:3:756
+    at async 6804-8b3d38998950b27d.min.js.br:3:67201
+    at async 6804-8b3d38998950b27d.min.js.br:3:1187
+    at async v (6804-8b3d38998950b27d.min.js.br:3:66621)
+    at async 6804-8b3d38998950b27d.min.js.br:3:47884
+(anônimo) @ vendor-core-83c17265f2588e9e.min.js.br:54
+vendor-core-83c17265f2588e9e.min.js.br:54 [Livegraph] Connection closed. Code: 4001, reason: connection_lifetime
+vendor-core-83c17265f2588e9e.min.js.br:54 [Livegraph] Connected 2026-04-01T06:40:03.182Z.
+nbelraenzoprsskjnvpc.supabase.co/storage/v1/object/sign/make-bd42bc02-documents/client_1774933494588_bzt8686t9/documents/video1/20260214_124607.mp4?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81N2U2ZGRkYi1hZjVkLTQ0MTItYjYyYi01NjE1YTZiYTJiMWYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtYWtlLWJkNDJiYzAyLWRvY3VtZW50cy9jbGllbnRfMTc3NDkzMzQ5NDU4OF9ienQ4Njg2dDkvZG9jdW1lbnRzL3ZpZGVvMS8yMDI2MDIxNF8xMjQ2MDcubXA0IiwiaWF0IjoxNzc0OTM0Nzk1LCJleHAiOjE3NzQ5MzgzOTV9.LAgEL95Ux0tpS651SeFt5-IE83cytz8L0FmyKQ_G3w4:1  Failed to load resource: the server responded with a status of 400 ()
+nbelraenzoprsskjnvpc.supabase.co/storage/v1/object/sign/make-bd42bc02-documents/client_1774933494588_bzt8686t9/documents/video1/20260214_124607.mp4?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81N2U2ZGRkYi1hZjVkLTQ0MTItYjYyYi01NjE1YTZiYTJiMWYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtYWtlLWJkNDJiYzAyLWRvY3VtZW50cy9jbGllbnRfMTc3NDkzMzQ5NDU4OF9ienQ4Njg2dDkvZG9jdW1lbnRzL3ZpZGVvMS8yMDI2MDIxNF8xMjQ2MDcubXA0IiwiaWF0IjoxNzc0OTM0Nzk1LCJleHAiOjE3NzQ5MzgzOTV9.LAgEL95Ux0tpS651SeFt5-IE83cytz8L0FmyKQ_G3w4:1  Failed to load resource: the server responded with a status of 400 ()
+nbelraenzoprsskjnvpc.supabase.co/storage/v1/object/sign/make-bd42bc02-documents/client_1774933494588_bzt8686t9/documents/video1/20260214_124607.mp4?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81N2U2ZGRkYi1hZjVkLTQ0MTItYjYyYi01NjE1YTZiYTJiMWYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtYWtlLWJkNDJiYzAyLWRvY3VtZW50cy9jbGllbnRfMTc3NDkzMzQ5NDU4OF9ienQ4Njg2dDkvZG9jdW1lbnRzL3ZpZGVvMS8yMDI2MDIxNF8xMjQ2MDcubXA0IiwiaWF0IjoxNzc0OTM0Nzk1LCJleHAiOjE3NzQ5MzgzOTV9.LAgEL95Ux0tpS651SeFt5-IE83cytz8L0FmyKQ_G3w4:1  Failed to load resource: the server responded with a status of 400 ()
+ [vite] connecting...
+ [vite] connected.
+ [AUTH_CONTEXT] Initializing authentication...
+ [AUTH_CONTEXT] Auth state changed: SIGNED_IN true
+ [AUTH_CONTEXT] Session found: true
+ 🔍 [ClientDetails] Loading client: client_1774933494588_bzt8686t9
+ [API_CALL] Making request to: /clients/client_1774933494588_bzt8686t9
+ [API_CALL] Full URL: https://nbelraenzoprsskjnvpc.supabase.co/functions/v1/make-server-bd42bc02/clients/client_1774933494588_bzt8686t9
+ [API_CALL] Method: GET
+ 📦 [ClientDetails] API Response: Object
+ 👤 [ClientDetails] Client data: Object
+ 📄 [ClientDetails] Documents object: Object
+ 📷 [ClientDetails] foto1: Object
+ 📷 [ClientDetails] foto2: Object
+ 📷 [ClientDetails] foto3: Object
+ 📷 [ClientDetails] foto4: Object
+ 📷 [ClientDetails] foto5: Object
+ 📷 [ClientDetails] foto6: Object
+ 🎥 [ClientDetails] video1: Object
+ 🎥 [ClientDetails] video2: Object
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression=&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2&reconnect-key=2eccabf601db1222c27deecc7411a6ad3373af87&reconnect-sequence-number=2832&initialFileVersion=106&previousLoadMode=full&incremental-loading-validation=0
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] Joining file version 106 (skip_reload reconnect)
+Sistema-de-Controle-e-Cobran%C3%A7a?t=SY3R5MuCHTD5b802-0&preview-route=%2Fclients%2Fclient_17749334…:1 Access to image at 'https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1' from origin 'https://www.figma.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1:1  Failed to load resource: net::ERR_FAILED
+/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/61792d2e316aac9f5b193825ba74c03c23c48e2ebc88888d9ff51fcb0d18b9ad:1  Failed to load resource: the server responded with a status of 404 ()
+vendor-core-83c17265f2588e9e.min.js.br:54 Failed to fetch snapshot files: E: XHR for "/api/rev/4O9UoYY3t4Ahc2Z6LnWPMf/code_snapshot/61792d2e316aac9f5b193825ba74c03c23c48e2ebc88888d9ff51fcb0d18b9ad" failed with status 404
+    at w (8638-d4ddfd6adcb660b4.min.js.br:1403:13936)
+    at async Object.k [as get] (8638-d4ddfd6adcb660b4.min.js.br:1403:14319)
+    at async 6804-8b3d38998950b27d.min.js.br:3:756
+    at async 6804-8b3d38998950b27d.min.js.br:3:67201
+    at async 6804-8b3d38998950b27d.min.js.br:3:1187
+    at async v (6804-8b3d38998950b27d.min.js.br:3:66621)
+    at async 6804-8b3d38998950b27d.min.js.br:3:47884
+(anônimo) @ vendor-core-83c17265f2588e9e.min.js.br:54
+vendor-core-83c17265f2588e9e.min.js.br:54 [Violation]'setTimeout' handler took 109ms
+[Violation]Forced reflow while executing JavaScript took 108ms
+vendor-core-83c17265f2588e9e.min.js.br:54 [Violation]'requestAnimationFrame' handler took 124ms
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression=&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2&reconnect-key=2eccabf601db1222c27deecc7411a6ad3373af87&reconnect-sequence-number=2835&initialFileVersion=106&previousLoadMode=full&incremental-loading-validation=0
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] connecting to wss://www.figma.com/api/multiplayer/4O9UoYY3t4Ahc2Z6LnWPMf?role=editor&tracking_session_id=ugltwMQSL5QDoP2Z&version=151&recentReload=0&file-load-streaming-compression=&user-id=1621044682112388368&client_release=9ddb06e97df71e299d0733644813b89ea0600aa2&reconnect-key=2eccabf601db1222c27deecc7411a6ad3373af87&reconnect-sequence-number=2835&initialFileVersion=106&previousLoadMode=full&incremental-loading-validation=0
+vendor-core-83c17265f2588e9e.min.js.br:54 [MultiplayerSession] Joining file version 106 (skip_reload reconnect)
+client_1774933494588_bzt8686t9:1  Failed to load resource: the server responded with a status of 408 ()
+Sistema-de-Controle-e-Cobran%C3%A7a?t=SY3R5MuCHTD5b802-0&preview-route=%2Fclients%2Fclient_17749334…:1 Access to image at 'https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1' from origin 'https://www.figma.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1:1  GET https://www.gravatar.com/avatar/336e5882029358663585e562023b5d2c?size=240&default=https%3A%2F%2Fs3-alpha.figma.com%2Fstatic%2Fuser_s_v2.png?c=1 net::ERR_FAILED 302 (Found)
+Image
+(anônimo) @ figma_app-0b95bcf863cbf27b.min.js.br:47
+U @ figma_app-0b95bcf863cbf27b.min.js.br:47
+g @ figma_app-0b95bcf863cbf27b.min.js.br:239
+(anônimo) @ figma_app-0b95bcf863cbf27b.min.js.br:239
+(anônimo) @ figma_app-0b95bcf863cbf27b.min.js.br:239
+aB @ vendor-core-83c17265f2588e9e.min.js.br:11
+oD @ vendor-core-83c17265f2588e9e.min.js.br:11
+(anônimo) @ vendor-core-83c17265f2588e9e.min.js.br:11
+oB @ vendor-core-83c17265f2588e9e.min.js.br:11
+oL @ vendor-core-83c17265f2588e9e.min.js.br:11
+f5 @ vendor-core-83c17265f2588e9e.min.js.br:11
+(anônimo) @ vendor-core-83c17265f2588e9e.min.js.br:11
+requestAnimationFrame
+(anônimo) @ vendor-core-83c17265f2588e9e.min.js.br:63
+g2 @ 8638-d4ddfd6adcb660b4.min.js.br:183
+s @ 8638-d4ddfd6adcb660b4.min.js.br:349
+requestAnimationFrame @ 8638-d4ddfd6adcb660b4.min.js.br:186
+_Async_requestAnimationFrame @ compiled_wasm.js.br:2
+$wasm-function[1896] @ static.figma.com/ful…iled_wasm.wasm.br:1
+$wasm-function[2259] @ static.figma.com/ful…iled_wasm.wasm.br:1
+$wasm-function[5094] @ static.figma.com/ful…iled_wasm.wasm.br:1
+$wasm-function[41349] @ static.figma.com/ful…iled_wasm.wasm.br:1
+$wasm-function[17173] @ static.figma.com/ful…iled_wasm.wasm.br:1
+$wasm-function[39059] @ static.figma.com/ful…iled_wasm.wasm.br:1
+(anônimo) @ compiled_wasm.js.br:2
+(anônimo) @ compiled_wasm.js.br:2
+_wrapCppCall @ compiled_wasm.js.br:2
+(anônimo) @ compiled_wasm.js.br:2
+S @ 9697-6280fcd4741a436e.min.js.br:3
+g.onmessage @ 9697-6280fcd4741a436e.min.js.br:3
