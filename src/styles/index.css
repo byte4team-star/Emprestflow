@@ -1,7 +1,4 @@
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* seus estilos extras */
 @import './fonts.css';

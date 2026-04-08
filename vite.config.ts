@@ -8,26 +8,22 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Emprestflow',
-        short_name: 'Emprestflow',
-        description: 'Sistema de gestão',
-        theme_color: '#065f46',
-        background_color: '#065f46',
-        display: 'standalone',
-        start_url: '/',
+        name: 'Sistema de Controle e Cobrança',
+        short_name: 'SistemaCC',
+        theme_color: '#ffffff',
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/icon-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/icon-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      }
-    })
-  ]
+            type: 'image/png',
+          },
+        ],
+      },
+    }),
+  ],
 })
