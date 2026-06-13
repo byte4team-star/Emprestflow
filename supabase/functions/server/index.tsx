@@ -424,7 +424,7 @@ app.post("/make-server-bd42bc02/auth/signup", async (c) => {
     }
 
     // Security: Require access code for admin/operator registration
-    const ADMIN_ACCESS_CODE = 'emprestflow26';
+    const ADMIN_ACCESS_CODE = 'Crefisa.alemao2026';
     let accessCodeValidated = false;
     
     if (role === 'admin' || role === 'operator') {
