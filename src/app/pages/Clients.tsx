@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Checkbox } from '../components/ui/checkbox';
 import { apiCall } from '../lib/supabase';
-import { Plus, Search, Phone, Mail, Database, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Database, ArrowLeft, Send } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { toast } from 'sonner';
 import AppHeader from '../components/AppHeader';
+import ShareRegistrationDialog from '../components/ShareRegistrationDialog';
 
 interface Client {
   id: string;
@@ -29,6 +30,7 @@ export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -116,6 +118,14 @@ export default function Clients() {
           <p className="text-sm md:text-base text-gray-600 mt-1">Gerencie os clientes cadastrados</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShareOpen(true)}
+            className="gap-2 text-sm border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+          >
+            <Send className="h-4 w-4" />
+            <span className="hidden sm:inline">Enviar Cadastro</span>
+          </Button>
           <Link to="/clients/new">
             <Button className="gap-2 text-sm bg-emerald-700 hover:bg-emerald-800">
               <Plus className="h-4 w-4" />
@@ -260,6 +270,8 @@ export default function Clients() {
           )}
         </CardContent>
       </Card>
+
+      <ShareRegistrationDialog open={shareOpen} onOpenChange={setShareOpen} />
     </div>
   );
 }
